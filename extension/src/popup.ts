@@ -172,22 +172,23 @@ async function requestExtract(tabId: number): Promise<ExtractReply> {
 }
 
 async function requestMultiExtract(tabId: number): Promise<MultiExtractReply> {
-  try {
-    return (await chrome.tabs.sendMessage(tabId, {
-      type: EXTRACT_MULTI_MESSAGE,
-    })) as MultiExtractReply;
-  } catch {
-    if (typeof chrome.scripting?.executeScript !== "function") {
-      throw new Error("inject unavailable");
-    }
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content-list.js"],
-    });
-    return (await chrome.tabs.sendMessage(tabId, {
-      type: EXTRACT_MULTI_MESSAGE,
-    })) as MultiExtractReply;
+  // Always reinject so `__gzhQcListApi` picks up MULTI handlers after extension updates
+  // (an older content script that only handled EXTRACT_LIST would otherwise swallow nothing
+  // and leave sendMessage unresolved / undefined).
+  if (typeof chrome.scripting?.executeScript !== "function") {
+    throw new Error("inject unavailable");
   }
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ["content-list.js"],
+  });
+  const reply = (await chrome.tabs.sendMessage(tabId, {
+    type: EXTRACT_MULTI_MESSAGE,
+  })) as MultiExtractReply | undefined;
+  if (!reply || typeof reply !== "object" || !("ok" in reply)) {
+    throw new Error("multi extract unavailable — refresh the list tab");
+  }
+  return reply;
 }
 
 async function requestCancel(tabId: number): Promise<void> {
@@ -208,6 +209,9 @@ function stopReasonMessage(reason: WalkStopReason, count: number, pages: number)
     case "error":
       return count > 0 ? `翻页中断。${base}` : "列表为空或无法解析。";
     case "end":
+      if (pages <= 1) {
+        return `${base}。若后台还有分页却只有一页，请刷新列表页后重试（下一页控件可能未识别）。`;
+      }
       return `${base} · 已到末页`;
     default: {
       const _exhaustive: never = reason;
@@ -235,7 +239,10 @@ async function finishWithArticles(
   setProgress(0.8);
   await downloadJson(payload, FIXTURE_FILENAME);
   markProgressComplete();
-  const kind = stopReason === "cancel" || stopReason === "error" ? "note" : "ok";
+  const kind =
+    stopReason === "cancel" || stopReason === "error" || (stopReason === "end" && pagesWalked <= 1)
+      ? "note"
+      : "ok";
   showStatus(stopReasonMessage(stopReason, rawArticles.length, pagesWalked), kind);
 }
 
@@ -321,7 +328,7 @@ async function onExport(): Promise<void> {
       reply = await requestMultiExtract(tab.id);
     } catch {
       resetProgress();
-      showStatus("请刷新已发表列表页后重试。", "danger");
+      showStatus("翻页脚本未就绪：请刷新已发表列表页后重试。", "danger");
       showPasteCta();
       return;
     }

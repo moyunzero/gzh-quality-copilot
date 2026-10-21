@@ -711,9 +711,38 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
     const nodes = root.querySelectorAll("a, button, span[role='button'], div[role='button']");
     for (const node of Array.from(nodes)) {
       const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
-      if (text !== "\u4E0B\u4E00\u9875" && !/^下一页/.test(text)) continue;
+      if (text !== "\u4E0B\u4E00\u9875" && !/^下一页/.test(text) && text !== "\u4E0B\u9875") continue;
       if (controlLooksDisabled(node)) continue;
       return node;
+    }
+    const doc = root;
+    const pager = ("querySelector" in doc ? doc.querySelector(".weui-desktop-pagination") : null) ?? null;
+    const scope = pager ?? root;
+    const currentEl = "querySelector" in scope ? scope.querySelector(".weui-desktop-pagination__num_current") : null;
+    const pageNow = currentEl ? parseInt((currentEl.textContent ?? "").trim(), 10) : NaN;
+    const miniBtns = Array.from(
+      "querySelectorAll" in scope ? scope.querySelectorAll(
+        ".weui-desktop-btn.weui-desktop-btn_default.weui-desktop-btn_mini, button.weui-desktop-btn_mini, a.weui-desktop-btn_mini"
+      ) : []
+    );
+    if (miniBtns.length > 0) {
+      let candidate;
+      if (!Number.isNaN(pageNow) && pageNow <= 1) {
+        candidate = miniBtns[0];
+      } else if (miniBtns.length >= 2) {
+        candidate = miniBtns[1];
+      } else {
+        candidate = miniBtns[miniBtns.length - 1];
+      }
+      if (candidate && !controlLooksDisabled(candidate)) return candidate;
+    }
+    if (!Number.isNaN(pageNow) && "querySelectorAll" in scope) {
+      const want = String(pageNow + 1);
+      for (const num of Array.from(scope.querySelectorAll(".weui-desktop-pagination__num"))) {
+        if ((num.textContent ?? "").trim() === want && !controlLooksDisabled(num)) {
+          return num;
+        }
+      }
     }
     return null;
   }
@@ -745,8 +774,9 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
           break;
         }
         const beforeKeys = new Set(page.map(rowDedupeKey).filter(Boolean));
+        const beforeFp = [...beforeKeys].sort().join("|");
         await opts.clickNext(next);
-        await opts.waitAfterClick();
+        await opts.waitAfterClick(beforeFp);
         if (opts.shouldAbort()) {
           stopReason = "cancel";
           break;
@@ -776,20 +806,19 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
   async function handleMultiExtract() {
     multiAbort = false;
     try {
-      let fingerprint = () => extractArticlesFromDocument(document).map(rowDedupeKey).filter(Boolean).join("|");
+      const fingerprint = () => extractArticlesFromDocument(document).map(rowDedupeKey).filter(Boolean).sort().join("|");
       const result = await walkListPages({
         extract: () => extractArticlesFromDocument(document),
         findNext: () => findNextPageControl(document),
         clickNext: (el) => {
           el.click();
         },
-        waitAfterClick: async () => {
-          const before = fingerprint();
-          const deadline = Date.now() + 4e3;
+        waitAfterClick: async (beforeFp) => {
+          const deadline = Date.now() + 6e3;
           while (Date.now() < deadline) {
             if (multiAbort) return;
-            await delay(200);
-            if (fingerprint() !== before) return;
+            await delay(250);
+            if (fingerprint() !== beforeFp) return;
           }
         },
         shouldAbort: () => multiAbort,
@@ -809,24 +838,37 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
       };
     }
   }
-  if (typeof chrome !== "undefined" && chrome.runtime?.onMessage && typeof window !== "undefined" && !window.__gzhQcListBound) {
-    window.__gzhQcListBound = true;
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (!message || typeof message !== "object") return;
-      const type = message.type;
-      if (type === CANCEL_MULTI_MESSAGE) {
-        multiAbort = true;
-        sendResponse({ ok: true });
-        return;
+  function installListMessageApi() {
+    const w = window;
+    w.__gzhQcListApi = {
+      onMessage(message, sendResponse) {
+        if (!message || typeof message !== "object") return;
+        const type = message.type;
+        if (type === CANCEL_MULTI_MESSAGE) {
+          multiAbort = true;
+          sendResponse({ ok: true });
+          return;
+        }
+        if (type === EXTRACT_MESSAGE) {
+          sendResponse(handleExtract());
+          return;
+        }
+        if (type === EXTRACT_MULTI_MESSAGE) {
+          void handleMultiExtract().then(sendResponse);
+          return true;
+        }
       }
-      if (type === EXTRACT_MESSAGE) {
-        sendResponse(handleExtract());
-        return;
-      }
-      if (type === EXTRACT_MULTI_MESSAGE) {
-        void handleMultiExtract().then(sendResponse);
-        return true;
-      }
-    });
+    };
+    if (!w.__gzhQcListRouter) {
+      w.__gzhQcListRouter = true;
+      chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+        const api = window.__gzhQcListApi;
+        if (!api) return;
+        return api.onMessage(message, sendResponse);
+      });
+    }
+  }
+  if (typeof chrome !== "undefined" && chrome.runtime?.onMessage && typeof window !== "undefined") {
+    installListMessageApi();
   }
 })();
