@@ -47,8 +47,40 @@ describe("findNextPageControl", () => {
       disabled: true,
       getAttribute: (name) => (name === "aria-disabled" ? "true" : null),
     };
-    const root = { querySelectorAll: () => [disabled] };
+    const root = {
+      querySelectorAll: (sel) => (sel.includes("button") || sel.includes("a,") ? [disabled] : []),
+      querySelector: () => null,
+    };
     assert.equal(findNextPageControl(root), null);
+  });
+
+  it("picks WeUI mini next button using current page index", () => {
+    const btn0 = {
+      textContent: "",
+      className: "weui-desktop-btn weui-desktop-btn_default weui-desktop-btn_mini",
+      disabled: false,
+      getAttribute: () => null,
+    };
+    const btn1 = {
+      textContent: "",
+      className: "weui-desktop-btn weui-desktop-btn_default weui-desktop-btn_mini",
+      disabled: false,
+      getAttribute: () => null,
+    };
+    const current = { textContent: "2", classList: { contains: () => true } };
+    const pager = {
+      querySelector: (sel) => (sel.includes("num_current") ? current : null),
+      querySelectorAll: (sel) => {
+        if (sel.includes("btn_mini")) return [btn0, btn1];
+        if (sel.includes("pagination__num")) return [];
+        return [];
+      },
+    };
+    const root = {
+      querySelectorAll: (sel) => (sel.includes("a, button") ? [] : []),
+      querySelector: (sel) => (sel.includes("pagination") ? pager : null),
+    };
+    assert.equal(findNextPageControl(root), btn1);
   });
 });
 

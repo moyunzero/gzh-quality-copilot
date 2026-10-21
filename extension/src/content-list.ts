@@ -900,17 +900,59 @@ function controlLooksDisabled(el: Element): boolean {
 }
 
 /**
- * Find a usable next-page control. Fragile on live MP — prefer text/WeUI heuristics.
- * Returns null when missing or disabled (treat as end of list).
+ * Find a usable next-page control. Live MP (appmsgpublish) uses WeUI mini buttons
+ * inside `.weui-desktop-pagination`, often without a clean「下一页」label.
  */
 export function findNextPageControl(root: ParentNode): HTMLElement | null {
   const nodes = root.querySelectorAll("a, button, span[role='button'], div[role='button']");
   for (const node of Array.from(nodes)) {
     const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
-    if (text !== "下一页" && !/^下一页/.test(text)) continue;
+    if (text !== "下一页" && !/^下一页/.test(text) && text !== "下页") continue;
     if (controlLooksDisabled(node)) continue;
     return node as HTMLElement;
   }
+
+  const doc = root as Document | Element;
+  const pager =
+    ("querySelector" in doc ? doc.querySelector(".weui-desktop-pagination") : null) ?? null;
+  const scope: ParentNode = pager ?? root;
+  const currentEl =
+    "querySelector" in scope
+      ? scope.querySelector(".weui-desktop-pagination__num_current")
+      : null;
+  const pageNow = currentEl ? parseInt((currentEl.textContent ?? "").trim(), 10) : NaN;
+
+  const miniBtns = Array.from(
+    "querySelectorAll" in scope
+      ? scope.querySelectorAll(
+          ".weui-desktop-btn.weui-desktop-btn_default.weui-desktop-btn_mini, button.weui-desktop-btn_mini, a.weui-desktop-btn_mini",
+        )
+      : [],
+  ) as HTMLElement[];
+
+  if (miniBtns.length > 0) {
+    // GreasyFork exporters: page 1 → first mini btn; later pages → second (prev + next).
+    let candidate: HTMLElement | undefined;
+    if (!Number.isNaN(pageNow) && pageNow <= 1) {
+      candidate = miniBtns[0];
+    } else if (miniBtns.length >= 2) {
+      candidate = miniBtns[1];
+    } else {
+      candidate = miniBtns[miniBtns.length - 1];
+    }
+    if (candidate && !controlLooksDisabled(candidate)) return candidate;
+  }
+
+  // Click the page number after current, when present.
+  if (!Number.isNaN(pageNow) && "querySelectorAll" in scope) {
+    const want = String(pageNow + 1);
+    for (const num of Array.from(scope.querySelectorAll(".weui-desktop-pagination__num"))) {
+      if ((num.textContent ?? "").trim() === want && !controlLooksDisabled(num)) {
+        return num as HTMLElement;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -918,7 +960,7 @@ export type WalkListPagesOpts = {
   extract: () => RawRow[];
   findNext: () => HTMLElement | null;
   clickNext: (el: HTMLElement) => void | Promise<void>;
-  waitAfterClick: () => Promise<void>;
+  waitAfterClick: (beforeFingerprint: string) => Promise<void>;
   shouldAbort: () => boolean;
   maxPages?: number;
 };
@@ -958,8 +1000,9 @@ export async function walkListPages(
       }
 
       const beforeKeys = new Set(page.map(rowDedupeKey).filter(Boolean));
+      const beforeFp = [...beforeKeys].sort().join("|");
       await opts.clickNext(next);
-      await opts.waitAfterClick();
+      await opts.waitAfterClick(beforeFp);
 
       if (opts.shouldAbort()) {
         stopReason = "cancel";
@@ -996,10 +1039,11 @@ function delay(ms: number): Promise<void> {
 async function handleMultiExtract(): Promise<MultiExtractReply> {
   multiAbort = false;
   try {
-    let fingerprint = () =>
+    const fingerprint = () =>
       extractArticlesFromDocument(document)
         .map(rowDedupeKey)
         .filter(Boolean)
+        .sort()
         .join("|");
     const result = await walkListPages({
       extract: () => extractArticlesFromDocument(document),
@@ -1007,13 +1051,12 @@ async function handleMultiExtract(): Promise<MultiExtractReply> {
       clickNext: (el) => {
         el.click();
       },
-      waitAfterClick: async () => {
-        const before = fingerprint();
-        const deadline = Date.now() + 4000;
+      waitAfterClick: async (beforeFp) => {
+        const deadline = Date.now() + 6000;
         while (Date.now() < deadline) {
           if (multiAbort) return;
-          await delay(200);
-          if (fingerprint() !== before) return;
+          await delay(250);
+          if (fingerprint() !== beforeFp) return;
         }
       },
       shouldAbort: () => multiAbort,
@@ -1034,34 +1077,59 @@ async function handleMultiExtract(): Promise<MultiExtractReply> {
   }
 }
 
-declare global {
-  interface Window {
-    __gzhQcListBound?: boolean;
+/** Latest handlers — reinject updates this even when the router already exists. */
+function installListMessageApi(): void {
+  const w = window as Window & {
+    __gzhQcListApi?: {
+      onMessage: (
+        message: unknown,
+        sendResponse: (r: unknown) => void,
+      ) => boolean | void;
+    };
+    __gzhQcListRouter?: boolean;
+  };
+  w.__gzhQcListApi = {
+    onMessage(message, sendResponse) {
+      if (!message || typeof message !== "object") return;
+      const type = (message as { type?: string }).type;
+      if (type === CANCEL_MULTI_MESSAGE) {
+        multiAbort = true;
+        sendResponse({ ok: true });
+        return;
+      }
+      if (type === EXTRACT_MESSAGE) {
+        sendResponse(handleExtract());
+        return;
+      }
+      if (type === EXTRACT_MULTI_MESSAGE) {
+        void handleMultiExtract().then(sendResponse);
+        return true;
+      }
+    },
+  };
+  if (!w.__gzhQcListRouter) {
+    w.__gzhQcListRouter = true;
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      const api = (
+        window as Window & {
+          __gzhQcListApi?: {
+            onMessage: (message: unknown, sendResponse: (r: unknown) => void) => boolean | void;
+          };
+        }
+      ).__gzhQcListApi;
+      if (!api) return;
+      return api.onMessage(message, sendResponse);
+    });
   }
 }
 
-if (
-  typeof chrome !== "undefined" &&
-  chrome.runtime?.onMessage &&
-  typeof window !== "undefined" &&
-  !window.__gzhQcListBound
-) {
-  window.__gzhQcListBound = true;
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!message || typeof message !== "object") return;
-    const type = (message as { type?: string }).type;
-    if (type === CANCEL_MULTI_MESSAGE) {
-      multiAbort = true;
-      sendResponse({ ok: true });
-      return;
-    }
-    if (type === EXTRACT_MESSAGE) {
-      sendResponse(handleExtract());
-      return;
-    }
-    if (type === EXTRACT_MULTI_MESSAGE) {
-      void handleMultiExtract().then(sendResponse);
-      return true;
-    }
-  });
+declare global {
+  interface Window {
+    __gzhQcListBound?: boolean;
+    __gzhQcListRouter?: boolean;
+  }
+}
+
+if (typeof chrome !== "undefined" && chrome.runtime?.onMessage && typeof window !== "undefined") {
+  installListMessageApi();
 }

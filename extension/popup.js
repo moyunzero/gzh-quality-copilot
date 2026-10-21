@@ -256,22 +256,20 @@
     }
   }
   async function requestMultiExtract(tabId) {
-    try {
-      return await chrome.tabs.sendMessage(tabId, {
-        type: EXTRACT_MULTI_MESSAGE
-      });
-    } catch {
-      if (typeof chrome.scripting?.executeScript !== "function") {
-        throw new Error("inject unavailable");
-      }
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ["content-list.js"]
-      });
-      return await chrome.tabs.sendMessage(tabId, {
-        type: EXTRACT_MULTI_MESSAGE
-      });
+    if (typeof chrome.scripting?.executeScript !== "function") {
+      throw new Error("inject unavailable");
     }
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content-list.js"]
+    });
+    const reply = await chrome.tabs.sendMessage(tabId, {
+      type: EXTRACT_MULTI_MESSAGE
+    });
+    if (!reply || typeof reply !== "object" || !("ok" in reply)) {
+      throw new Error("multi extract unavailable \u2014 refresh the list tab");
+    }
+    return reply;
   }
   async function requestCancel(tabId) {
     try {
@@ -289,6 +287,9 @@
       case "error":
         return count > 0 ? `\u7FFB\u9875\u4E2D\u65AD\u3002${base}` : "\u5217\u8868\u4E3A\u7A7A\u6216\u65E0\u6CD5\u89E3\u6790\u3002";
       case "end":
+        if (pages <= 1) {
+          return `${base}\u3002\u82E5\u540E\u53F0\u8FD8\u6709\u5206\u9875\u5374\u53EA\u6709\u4E00\u9875\uFF0C\u8BF7\u5237\u65B0\u5217\u8868\u9875\u540E\u91CD\u8BD5\uFF08\u4E0B\u4E00\u9875\u63A7\u4EF6\u53EF\u80FD\u672A\u8BC6\u522B\uFF09\u3002`;
+        }
         return `${base} \xB7 \u5DF2\u5230\u672B\u9875`;
       default: {
         const _exhaustive = reason;
@@ -311,7 +312,7 @@
     setProgress(0.8);
     await downloadJson(payload, FIXTURE_FILENAME);
     markProgressComplete();
-    const kind = stopReason === "cancel" || stopReason === "error" ? "note" : "ok";
+    const kind = stopReason === "cancel" || stopReason === "error" || stopReason === "end" && pagesWalked <= 1 ? "note" : "ok";
     showStatus(stopReasonMessage(stopReason, rawArticles.length, pagesWalked), kind);
   }
   var cancelTabId;
@@ -383,7 +384,7 @@
         reply = await requestMultiExtract(tab.id);
       } catch {
         resetProgress();
-        showStatus("\u8BF7\u5237\u65B0\u5DF2\u53D1\u8868\u5217\u8868\u9875\u540E\u91CD\u8BD5\u3002", "danger");
+        showStatus("\u7FFB\u9875\u811A\u672C\u672A\u5C31\u7EEA\uFF1A\u8BF7\u5237\u65B0\u5DF2\u53D1\u8868\u5217\u8868\u9875\u540E\u91CD\u8BD5\u3002", "danger");
         showPasteCta();
         return;
       }
