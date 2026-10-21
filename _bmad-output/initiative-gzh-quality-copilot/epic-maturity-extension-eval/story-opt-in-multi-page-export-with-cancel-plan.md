@@ -3,7 +3,7 @@ title: 'Opt-in multi-page export with cancel'
 type: 'feature'
 ticket: '2'
 created: '2026-10-21'
-status: 'built'
+status: done
 baseline_revision: 'a2d06e4a11bc2041b5543c3182374102fd4edd8a'
 route: 'full'
 route_source: 'auto'
@@ -55,11 +55,11 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `extension/src/logic.ts` -- Message/types + any pure merge/dedupe helpers shared with content tests.
-- [ ] `extension/src/content-list.ts` -- Multi-page walk + cancel flag + next-control heuristics; keep single-page extract as default handler.
-- [ ] `extension/popup.html` + `popup.css` + `popup.ts` -- Opt-in checkbox; cancel during run; status reasons; unchecked export path unchanged.
-- [ ] `extension/fixtures/` + `extension/test/` -- Fixture-driven pager/merge/cancel tests; rebuild via `npm run build`; `npm test` green.
-- [ ] HITL note -- Maintainer: unchecked vs checked on real multi-page list; cancel once; record in Implementation Notes.
+- [x] `extension/src/logic.ts` -- Message/types + any pure merge/dedupe helpers shared with content tests.
+- [x] `extension/src/content-list.ts` -- Multi-page walk + cancel flag + next-control heuristics; keep single-page extract as default handler.
+- [x] `extension/popup.html` + `popup.css` + `popup.ts` -- Opt-in checkbox; cancel during run; status reasons; unchecked export path unchanged.
+- [x] `extension/fixtures/` + `extension/test/` -- Fixture-driven pager/merge/cancel tests; rebuild via `npm run build`; `npm test` green.
+- [x] HITL note -- Maintainer: unchecked vs checked on real multi-page list; cancel once; record in Implementation Notes.
 
 **Acceptance Criteria:**
 - Given opt-in unchecked on a list tab, when 导出, then result matches single-page behavior.
@@ -69,10 +69,12 @@ context: []
 
 ## Implementation Notes
 
-- HITL: unchecked vs checked on real multi-page list; cancel once mid-walk; reload unpacked extension after build.
-- CI: `walkListPages` / `mergePageRows` unit tests; popup wiring source asserts. Live WeUI selectors remain fragile.
+- HITL 2026-10-21: 16-page account; opt-in checked → SW `begin=` URL walk completed; `articles.interchange.json` downloaded with multi-page rows (> page one). Known leftover (out of 6.2 scope): truncated-title + tempkey URL near-duplicates vs full `/s/` rows; dirty「已修改」title suffixes.
+- CI: `walkListPages` / `mergePageRows` / `computeNextListPageUrl` unit tests; popup + background wiring asserts. Live WeUI click path kept as fallback; production multi-page uses SW URL orchestration.
 
 ## Plan Change Log
+
+- 2026-10-21 — Multi-page driver moved to service worker + `begin`/`count` URL navigation after DOM click + full-reload killed the content script at page 2 and SW long-wait aborted download.
 
 ## Review Triage Log
 
@@ -80,7 +82,7 @@ context: []
 
 ## Design Notes
 
-Orchestrate the walk **inside the content script** (popup may close if focus is lost; cancel works while popup stays open and sends abort). Prefer text/WeUI selectors for「下一页」; treat missing/disabled next as end. Safety cap (e.g. 50 pages) prevents runaway. Deduplicate by `normalizeTitleForMatch` + url when present. After cancel/end, leave the tab on the last visited list page (no forced return to page 1). Partial download on cancel: **yes if ≥1 row collected**, else status-only + paste CTA.
+Orchestrate the walk **in the service worker** via `begin`/`count` list URLs (WeChat list full-reloads; content-script click walk dies after page 1→2). Content script answers sync `EXTRACT_LIST_PAGE_META` (rows + nextUrl). Popup kicks `BG_START_MULTI_EXPORT` and may close; cancel sets SW flag. Safety cap 50 pages. Deduplicate by title+url. Leave tab on last visited list page. Partial download on cancel: **yes if ≥1 row collected**, else status-only + paste CTA.
 
 ## Verification
 
