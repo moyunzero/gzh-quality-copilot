@@ -72,6 +72,8 @@ context: []
 
 ## Review Triage Log
 
+- 2026-10-21 quick — findings: 0 (No findings). verdicts high/medium/low/false/maybe-false: 0/0/0/0/0. No patch/defer/intent_gap/bad_plan.
+
 ## Design Notes
 
 Infer “已登录本号” from being on the same appmsg list paths export already trusts—no content-script probe in 6.1. Non-list mp paths (home, etc.) map to not-ready/not-logged-in **equivalent**. Exact Chinese strings may match existing「当前不是已发表列表页。」plus a positive ready line for list URLs.
