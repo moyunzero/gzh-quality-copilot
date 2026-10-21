@@ -1,0 +1,60 @@
+# epic-foundation-scaffold — build order = table order
+
+[[entry]]
+id = 1
+type = "story"
+title = "Scaffold repo directories"
+description = "Create architecture Structural Seed folders: skills/_shared, references/, examples/, extension/ (empty stub), with .gitkeep where needed so the tree is commit-ready."
+verify = "Listing the repo root shows skills/_shared, references, examples, and extension directories present."
+covers = ["FR-13"]
+after = []
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 2
+type = "story"
+title = "Interchange gold sample JSON"
+description = "Add examples/articles.interchange.json (and optional CSV twin) matching AD-3 seed fields with 2–3 fictional short-fiction articles spanning different read counts for later degradation tests."
+verify = "File examples/articles.interchange.json exists; each article object includes title and read_count; a second article set or note documents <10-count fixture intent."
+covers = ["FR-13"]
+after = [1]
+hitl = false
+risk = "low"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-3"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Shared diagnosis contracts"
+description = "Write skills/_shared/contracts.md with the PRD FR-6 article-count degradation table and the mandatory four-block report order plus badge literals 【低置信】/【推测】."
+verify = "contracts.md contains the four count bands and the ordered block names 结论/因子/候选/实验."
+covers = ["FR-3"]
+after = [1]
+hitl = false
+risk = "low"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-4", "prd-gzh-quality-copilot/prd-gzh-quality-copilot.md"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Sample four-block report"
+description = "Add examples/sample-report.md illustrating four blocks, evidence snippet style, and badges, aligned with UX sample-report and contracts.md."
+verify = "sample-report.md has four headed sections in contract order and at least one 【推测】 or 【低置信】 marker."
+covers = ["FR-13"]
+after = [3]
+hitl = false
+risk = "low"
+references = ["ux-gzh-quality-copilot/.working/sample-report.md"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "README and LICENSE stubs"
+description = "Add root README.md with expectation-alignment sentence (FR-3), install/demo placeholders, and links to examples/ + contracts.md; add LICENSE stub stating SPDX TBD before public tag."
+verify = "README contains the 篇数/复盘预期对齐 sentence and links to examples/articles.interchange.json and skills/_shared/contracts.md; LICENSE file exists at repo root."
+covers = ["FR-3", "FR-13"]
+after = [2, 3, 4]
+hitl = false
+risk = "low"
+references = ["ux-gzh-quality-copilot/.working/sample-readme-outline.md"]

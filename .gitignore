@@ -1,0 +1,51 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- secrets & env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+credentials.json
+**/secrets/
+
+# --- dependencies & caches ---
+node_modules/
+.npm/
+.cache/
+*.tsbuildinfo
+
+# --- local Agent / tool clutter (keep installed skill mirrors if you commit them) ---
+# Uncomment to stop tracking local skill installs:
+# .cursor/
+# .agents/
+
+# --- BMAD generated / user-local ---
+_bmad/render/
+_bmad/custom/**/*.user.toml
+
+# --- extension build intermediates (keep popup.js / content-list.js if you load unpacked without rebuild) ---
+extension/test/logic.mjs
+extension/test/content-list.mjs
+
+# --- live WeChat exports (never publish) ---
+# Extension default download name if dropped in the repo root:
+/articles.interchange.json
+# Chrome "Save As" duplicates: articles.interchange (1).json etc.
+articles.interchange\ (*).json
+
+# Author paste / full-account dumps (anywhere)
+paste.json
+own-account*.json
+own-account*.csv
+
+# Catch-all private pocket (keep a local README inside; whole dir ignored)
+dogfood/private/
+**/local-only/

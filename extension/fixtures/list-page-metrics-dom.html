@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>MP list fixture — title/url JSON + DOM counts</title>
+  </head>
+  <body>
+    <!-- Live-smoke shape: embedded list has title/url only, no counts -->
+    <script type="application/json" id="mp-list-embedded">
+      {
+        "app_msg_list": [
+          {
+            "title": "厨房沙漏底座里还有一张卡  原创",
+            "link": "https://mp.weixin.qq.com/s/fixture-sand"
+          },
+          {
+            "title": "计时器跳的是隔壁那张卡",
+            "link": "https://mp.weixin.qq.com/s/fixture-timer"
+          },
+          {
+            "title": "仅 JSON 无 DOM 匹配",
+            "link": "https://mp.weixin.qq.com/s/fixture-orphan"
+          }
+        ]
+      }
+    </script>
+
+    <!-- Visible rows supply counts; titles differ slightly by 原创 / spacing -->
+    <ul class="mp-msg-list">
+      <li
+        class="mp-msg-item"
+        data-title="厨房沙漏底座里还有一张卡"
+        data-read-count="1200"
+        data-like-count="12"
+        data-share-count="3"
+        data-url="https://mp.weixin.qq.com/s/fixture-sand"
+      ></li>
+      <li
+        class="mp-msg-item"
+        data-title="计时器跳的是隔壁那张卡  原创"
+        data-read-count="80"
+        data-wow-count="2"
+        data-url="https://mp.weixin.qq.com/s/fixture-timer"
+      ></li>
+      <li
+        class="mp-msg-item"
+        data-title="完全不同的标题"
+        data-read-count="999"
+      ></li>
+    </ul>
+  </body>
+</html>

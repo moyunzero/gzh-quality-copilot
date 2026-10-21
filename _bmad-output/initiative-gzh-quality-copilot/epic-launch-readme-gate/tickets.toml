@@ -1,0 +1,70 @@
+# epic-launch-readme-gate — build order = table order
+
+[[entry]]
+id = 1
+type = "story"
+title = "README install matrix"
+description = "Replace README 安装 placeholder with five Agent install entries (Cursor, Claude Code, Codex, WorkBuddy, OpenClaw): one copy-paste command each when known, else a one-line pointer to that Agent’s skill-install docs plus Cursor as the worked example. Keep/polish 预期对齐 (FR-3 honesty sentence already present) and 演示 pointers to examples JSON/CSV + four-block sample report."
+verify = "A stranger can follow README 安装 for at least one named Agent without inventing steps; 演示 still links examples interchange + sample-report; 预期对齐 sentence remains."
+covers = ["FR-1"]
+after = []
+hitl = false
+risk = "medium"
+references = ["prd-gzh-quality-copilot/prd-gzh-quality-copilot.md"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "README privacy and permissions freeze"
+description = "Replace README 权限清单 + 三层隐私 placeholder: copy `permissions` and `host_permissions` verbatim from extension/manifest.json; write three-layer privacy (local export; Skills on author Agent; pasted content to author-chosen model API) matching Customer FAQ Q5 / AD-7."
+verify = "Diff of those two arrays against manifest.json is empty; README states all three privacy layers in plain Chinese."
+covers = ["FR-2"]
+after = [1, "3.3"]
+hitl = false
+risk = "medium"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-7", "extension/manifest.json"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "README bans and paste fallback"
+description = "Replace 禁令 and 扩展失败→粘贴 placeholders with testable ban sentences (no 推流破解 / 保证推荐 / 未授权批量采他号) and permanent paste-fallback copy for when the extension fails after launch."
+verify = "README contains those ban literals (or clear synonyms) and a paste-fallback section pointing at the same interchange shape."
+covers = ["FR-14"]
+after = [2]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Launch gate checklists"
+description = "Add a checkable launch-gate doc (or README section) covering: maintainer dogfood vertical cut; Skill vs bare-chat same-sample contrast for degradation/evidence/four-block. No new product features."
+verify = "A person can tick each gate item; checklist cites what evidence to attach (report path / date)."
+covers = []
+after = [1, 2, 3, "2.1"]
+hitl = true
+risk = "medium"
+references = ["prd-gzh-quality-copilot/prd-gzh-quality-copilot.md"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "LICENSE SPDX selection"
+description = "Replace LICENSE stub with MIT text (Decision 2026-10-20: SPDX = MIT). No other SPDX options in this ticket."
+verify = "Root LICENSE is valid MIT; file no longer says SPDX not chosen."
+covers = ["FR-14"]
+after = []
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 6
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only from deferred review findings in this epic. No new product scope."
+verify = "Leftover todos from 4.1–4.5 are landed or explicitly dropped; no new FR coverage added."
+covers = []
+after = [1, 2, 3, 4, 5]
+hitl = false
+risk = "low"

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>MP list fixture</title>
+  </head>
+  <body>
+    <!-- Offline stand-in for embedded list JSON on the MP 已发表列表 page -->
+    <script type="application/json" id="mp-list-embedded">
+      {
+        "app_msg_list": [
+          {
+            "title": "第一篇标题",
+            "update_time": "2025-03-12",
+            "read_num": 100,
+            "like_num": 8
+          },
+          {
+            "title": "第二篇标题",
+            "update_time": "2025-03-13",
+            "read_num": 50
+          }
+        ]
+      }
+    </script>
+
+    <!-- Visible-row fallback used when embedded JSON is absent -->
+    <ul class="mp-msg-list">
+      <li
+        class="mp-msg-item"
+        data-title="第一篇标题"
+        data-publish-time="2025-03-12"
+        data-read-count="100"
+        data-like-count="8"
+      ></li>
+      <li
+        class="mp-msg-item"
+        data-title="第二篇标题"
+        data-publish-time="2025-03-13"
+        data-read-count="50"
+      ></li>
+    </ul>
+  </body>
+</html>

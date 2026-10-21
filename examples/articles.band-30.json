@@ -1,0 +1,304 @@
+{
+  "articles": [
+    {
+      "title": "雨棚下的折叠椅",
+      "publish_time": "2025-02-02T20:00:00+08:00",
+      "read_count": 420,
+      "like_count": 22,
+      "share_count": 2,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-01",
+      "body": "折叠椅还温热。座面上有没喝完的豆浆。"
+    },
+    {
+      "title": "值班室的搪瓷杯",
+      "publish_time": "2025-03-03T21:00:00+08:00",
+      "read_count": 310,
+      "like_count": 18,
+      "share_count": 2,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-02",
+      "body": "杯沿缺了一块。水是凉的。"
+    },
+    {
+      "title": "天桥上的风筝线",
+      "publish_time": "2025-04-04T22:00:00+08:00",
+      "read_count": 280,
+      "like_count": 15,
+      "share_count": 1,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-03",
+      "body": "线缠在栏杆上。风筝已经不在。"
+    },
+    {
+      "title": "菜市场收摊以后",
+      "publish_time": "2025-05-05T23:00:00+08:00",
+      "read_count": 8,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-04",
+      "body": "地上只剩一片菜叶。秤还开着。"
+    },
+    {
+      "title": "错层的灯",
+      "publish_time": "2025-06-06T20:00:00+08:00",
+      "read_count": 11,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-05",
+      "body": "灯管跳了两下。楼梯间的镜子里多了一个人影。"
+    },
+    {
+      "title": "修好的门铃",
+      "publish_time": "2025-07-07T21:00:00+08:00",
+      "read_count": 14,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-06",
+      "body": "门铃响了三短一长。没人按过这种节奏。"
+    },
+    {
+      "title": "借走的雨伞",
+      "publish_time": "2025-08-08T22:00:00+08:00",
+      "read_count": 17,
+      "like_count": 4,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-07",
+      "body": "伞架空了。挂钩上留着一张湿纸条。"
+    },
+    {
+      "title": "凌晨的复印店",
+      "publish_time": "2025-09-09T23:00:00+08:00",
+      "read_count": 20,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-08",
+      "body": "最后一张复印件字是反的。店员已经打烊。"
+    },
+    {
+      "title": "楼道里的自行车铃",
+      "publish_time": "2025-10-10T20:00:00+08:00",
+      "read_count": 23,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-09",
+      "body": "铃响了一下。车子锁还在。"
+    },
+    {
+      "title": "谁喝掉了半杯茶",
+      "publish_time": "2025-11-11T21:00:00+08:00",
+      "read_count": 26,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-10",
+      "body": "杯垫是干的。茶叶还烫。"
+    },
+    {
+      "title": "夜校教室的粉笔",
+      "publish_time": "2025-12-12T22:00:00+08:00",
+      "read_count": 8,
+      "like_count": 4,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-11",
+      "body": "黑板只写了一个「等」。粉笔断在槽里。"
+    },
+    {
+      "title": "停车位多了一只猫",
+      "publish_time": "2025-01-13T23:00:00+08:00",
+      "read_count": 11,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-12",
+      "body": "猫不让路。车钥匙在它旁边。"
+    },
+    {
+      "title": "便利店过期的关东煮",
+      "publish_time": "2025-02-14T20:00:00+08:00",
+      "read_count": 14,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-13",
+      "body": "签子还插着。汤面上有一层膜。"
+    },
+    {
+      "title": "洗衣房唯一的袜子",
+      "publish_time": "2025-03-15T21:00:00+08:00",
+      "read_count": 17,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-14",
+      "body": "袜子是新的。没有另一只。"
+    },
+    {
+      "title": "屋顶水箱的盖子",
+      "publish_time": "2025-04-16T22:00:00+08:00",
+      "read_count": 20,
+      "like_count": 4,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-15",
+      "body": "盖子开着一条缝。里面有风声。"
+    },
+    {
+      "title": "值班记录少了一行",
+      "publish_time": "2025-05-17T23:00:00+08:00",
+      "read_count": 23,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-16",
+      "body": "时间写到 23:40。下一格是空的。"
+    },
+    {
+      "title": "花园里的塑料椅",
+      "publish_time": "2025-06-18T20:00:00+08:00",
+      "read_count": 26,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-17",
+      "body": "椅脚陷进土里。扶手上有雨。"
+    },
+    {
+      "title": "电话亭的听筒",
+      "publish_time": "2025-07-19T21:00:00+08:00",
+      "read_count": 8,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-18",
+      "body": "听筒挂着。听筒里有电流声。"
+    },
+    {
+      "title": "未寄出的明信片",
+      "publish_time": "2025-08-20T22:00:00+08:00",
+      "read_count": 11,
+      "like_count": 4,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-19",
+      "body": "地址写完了。背面是空白。"
+    },
+    {
+      "title": "地铁闸机多夹了一张票",
+      "publish_time": "2025-09-21T23:00:00+08:00",
+      "read_count": 14,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-20",
+      "body": "票面日期是明天。闸机已经关闭。"
+    },
+    {
+      "title": "办公室的绿萝",
+      "publish_time": "2025-10-22T20:00:00+08:00",
+      "read_count": 17,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-21",
+      "body": "叶子朝向走廊。门从里面锁着。"
+    },
+    {
+      "title": "早餐铺的第二碗",
+      "publish_time": "2025-11-23T21:00:00+08:00",
+      "read_count": 20,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-22",
+      "body": "第二碗已经盛好。位子上没有人。"
+    },
+    {
+      "title": "小区公告栏的钉",
+      "publish_time": "2025-12-24T22:00:00+08:00",
+      "read_count": 23,
+      "like_count": 4,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-23",
+      "body": "钉还在。告示撕走了。"
+    },
+    {
+      "title": "天台的晾衣绳",
+      "publish_time": "2025-01-25T23:00:00+08:00",
+      "read_count": 26,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-24",
+      "body": "绳上只挂一枚衣夹。夹口朝下。"
+    },
+    {
+      "title": "旧收音机的短波",
+      "publish_time": "2025-02-26T20:00:00+08:00",
+      "read_count": 8,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-25",
+      "body": "短波里有人念站名。这座城市没有那一站。"
+    },
+    {
+      "title": "井盖上的粉笔圈",
+      "publish_time": "2025-03-27T21:00:00+08:00",
+      "read_count": 11,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-26",
+      "body": "圈是新的。井盖编号被擦掉一半。"
+    },
+    {
+      "title": "值班室多了一把钥匙",
+      "publish_time": "2025-04-01T22:00:00+08:00",
+      "read_count": 14,
+      "like_count": 4,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-27",
+      "body": "钥匙没有编号。抽屉是锁上的。"
+    },
+    {
+      "title": "谁在凌晨拖地",
+      "publish_time": "2025-05-02T23:00:00+08:00",
+      "read_count": 17,
+      "like_count": 1,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-28",
+      "body": "水迹到三楼就断了。拖把还湿。"
+    },
+    {
+      "title": "快递柜超时的格子",
+      "publish_time": "2025-06-03T20:00:00+08:00",
+      "read_count": 20,
+      "like_count": 2,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-29",
+      "body": "格子开着。里面是一张名片。"
+    },
+    {
+      "title": "最后一班电梯",
+      "publish_time": "2025-07-04T21:00:00+08:00",
+      "read_count": 23,
+      "like_count": 3,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-30",
+      "body": "按钮亮着负一层。这栋楼没有负一层。"
+    }
+  ]
+}
