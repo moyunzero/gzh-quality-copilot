@@ -1,13 +1,12 @@
 import {
   assertGoldPayload,
-  CANCEL_MULTI_MESSAGE,
+  BG_CANCEL_MULTI_MESSAGE,
+  BG_START_MULTI_MESSAGE,
   EXTRACT_MESSAGE,
-  EXTRACT_MULTI_MESSAGE,
   FIXTURE_FILENAME,
   normalizeArticles,
   tabExportContext,
   type ExtractReply,
-  type MultiExtractReply,
   type RawRow,
   type TabExportContext,
   type WalkStopReason,
@@ -171,31 +170,22 @@ async function requestExtract(tabId: number): Promise<ExtractReply> {
   }
 }
 
-async function requestMultiExtract(tabId: number): Promise<MultiExtractReply> {
-  // Always reinject so `__gzhQcListApi` picks up MULTI handlers after extension updates
-  // (an older content script that only handled EXTRACT_LIST would otherwise swallow nothing
-  // and leave sendMessage unresolved / undefined).
-  if (typeof chrome.scripting?.executeScript !== "function") {
-    throw new Error("inject unavailable");
+/** Kick off multi-page walk in the service worker so download survives popup close. */
+async function startBackgroundMulti(tabId: number): Promise<void> {
+  const reply = (await chrome.runtime.sendMessage({
+    type: BG_START_MULTI_MESSAGE,
+    tabId,
+  })) as { ok?: boolean; started?: boolean; error?: string } | undefined;
+  if (!reply?.ok || !reply.started) {
+    throw new Error(reply?.error ?? "background multi start failed");
   }
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    files: ["content-list.js"],
-  });
-  const reply = (await chrome.tabs.sendMessage(tabId, {
-    type: EXTRACT_MULTI_MESSAGE,
-  })) as MultiExtractReply | undefined;
-  if (!reply || typeof reply !== "object" || !("ok" in reply)) {
-    throw new Error("multi extract unavailable — refresh the list tab");
-  }
-  return reply;
 }
 
 async function requestCancel(tabId: number): Promise<void> {
   try {
-    await chrome.tabs.sendMessage(tabId, { type: CANCEL_MULTI_MESSAGE });
+    await chrome.runtime.sendMessage({ type: BG_CANCEL_MULTI_MESSAGE, tabId });
   } catch {
-    /* tab may be gone */
+    /* extension context may be gone */
   }
 }
 
@@ -252,6 +242,8 @@ async function onExport(): Promise<void> {
   if (exportRunning) return;
   const multi = multipageOpt.checked;
   setBusy(true, multi);
+  /** When true, leave cancel affordance up — SW owns the walk/download. */
+  let backgroundMultiRunning = false;
 
   try {
     hidePaste();
@@ -320,36 +312,35 @@ async function onExport(): Promise<void> {
       return;
     }
 
-    showStatus("正在翻页导出…可点取消。", "note");
-    setProgress(0.35);
-
-    let reply: MultiExtractReply;
+    showStatus("正在翻页导出…可关闭弹窗，完成后自动下载；未关时可点取消。", "note");
+    setProgress(0.45);
     try {
-      reply = await requestMultiExtract(tab.id);
+      await startBackgroundMulti(tab.id);
     } catch {
       resetProgress();
-      showStatus("翻页脚本未就绪：请刷新已发表列表页后重试。", "danger");
+      showStatus("翻页导出未能启动：请刷新已发表列表页后重试。", "danger");
       showPasteCta();
       return;
     }
-
-    setProgress(0.7);
-
-    if (!reply || reply.ok === false) {
-      resetProgress();
-      showStatus("列表为空或无法解析。", "danger");
-      showPasteCta();
-      return;
-    }
-
-    await finishWithArticles(reply.articles ?? [], reply.stopReason, reply.pagesWalked);
+    markProgressComplete();
+    // Download runs in the service worker; do not await walk here (popup dies on page click).
+    showStatus("翻页进行中：请稍候查看下载（articles.interchange.json）。", "note");
+    backgroundMultiRunning = true;
+    exportRunning = true;
+    reveal(cancelBtn);
+    cancelBtn.disabled = false;
+    exportBtn.disabled = true;
+    fixtureBtn.disabled = true;
+    multipageOpt.disabled = true;
   } catch {
     resetProgress();
     showStatus("本地下载失败。", "danger");
     showPasteCta();
   } finally {
-    cancelTabId = undefined;
-    setBusy(false);
+    if (!backgroundMultiRunning) {
+      cancelTabId = undefined;
+      setBusy(false);
+    }
   }
 }
 
