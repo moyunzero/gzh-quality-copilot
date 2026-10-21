@@ -1,0 +1,42 @@
+# Initiative breakdown — build order = table order
+
+[[epic]]
+id = 1
+slug = "epic-foundation-scaffold"
+title = "Foundation scaffold"
+covers = ["FR-3", "FR-13"]
+
+[[epic]]
+id = 2
+slug = "epic-skills-diagnosis"
+title = "Skills diagnosis loop"
+covers = ["FR-4", "FR-6", "FR-7", "FR-8", "FR-9", "FR-10", "FR-11", "FR-12"]
+after = [{ epic = 1, needs = "gold sample + shared contracts.md" }]
+
+[[epic]]
+id = 3
+slug = "epic-extension-export"
+title = "Extension own-account export"
+covers = ["FR-5", "FR-2"]
+after = [{ epic = 1, needs = "interchange gold sample schema" }]
+
+[[epic]]
+id = 4
+slug = "epic-launch-readme-gate"
+title = "Launch README and gates"
+covers = ["FR-1", "FR-2", "FR-14"]
+after = [
+  { epic = 2, needs = "working Skill report path" },
+  { epic = 3, needs = "manifest.json for permission checklist" },
+]
+
+[[epic]]
+id = 5
+slug = "epic-quality-depth"
+title = "Quality depth after launch gates"
+covers = ["FR-5", "FR-6", "FR-8", "FR-11", "FR-12"]
+after = [
+  { epic = 2, needs = "gzh-review + contracts + references" },
+  { epic = 3, needs = "MV3 list extract skeleton" },
+  { epic = 4, needs = "launch README + gates closed" },
+]

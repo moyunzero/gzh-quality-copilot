@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>本号导出</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,550&family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="desk">
+      <header class="mast">
+        <p class="kicker">校样台</p>
+        <h1>本号导出</h1>
+      </header>
+
+      <div class="actions">
+        <button type="button" id="export-btn" class="cta-primary">导出</button>
+        <button type="button" id="fixture-btn" class="cta-ghost">夹具导出</button>
+      </div>
+
+      <div id="status" class="status" hidden role="status" aria-live="polite"></div>
+
+      <button type="button" id="paste-btn" class="cta-ghost paste-cta" hidden>
+        改用粘贴
+      </button>
+      <p id="paste-help" class="paste-help" hidden>
+        把同一形状的 JSON（<code>articles[]</code>：title、publish_time、计数、url、body）贴进
+        Agent 复盘 Skill。扩展失败不阻断复盘。
+      </p>
+
+      <details class="scope">
+        <summary>会做 / 不会做</summary>
+        <div class="scope-body">
+          <div class="scope-clip">
+            <p class="scope-label">会做</p>
+            <ul>
+              <li>权限冻结（与 <code>manifest.json</code> 同源）：<code>downloads</code>、<code>tabs</code>、<code>scripting</code>；页面访问主机仅 <code>https://mp.weixin.qq.com/*</code>（校样字体 CDN 除外）</li>
+              <li>检查当前标签是否为本号已发表列表（路径 <code>/cgi-bin/appmsg*</code> 或 <code>/cgi-bin/appmsgpublish*</code>）</li>
+              <li>在当前列表页读取可见行／页内列表数据，规范化为金样字段并本地下载 JSON（正文 <code>body</code> 始终省略）</li>
+              <li>本地下载夹具 JSON（金样字段，计数为数字）</li>
+              <li>失败时给出「改用粘贴」，不下载文件</li>
+            </ul>
+            <p class="scope-label">不会做</p>
+            <ul>
+              <li>打开文章详情、抓取正文、导出 CSV、代持登录、代发、读他号、上传到本项目服务器、嵌入 Skill／诊断逻辑</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+
+      <div id="progress" class="progress" hidden>
+        <span id="progress-bar" class="progress-bar"></span>
+        <span id="progress-check" class="progress-check" aria-hidden="true">✓</span>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

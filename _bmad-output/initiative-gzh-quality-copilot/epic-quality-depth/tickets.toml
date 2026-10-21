@@ -1,0 +1,48 @@
+# epic-quality-depth — build order = table order
+
+[[entry]]
+id = 1
+type = "story"
+title = "Extension list metrics enrichment"
+description = "On the logged-in own-account MP list page, enrich export so read_count (and any other count stably available on that page) fills gold keys when present; otherwise omit and list in `_missing`. No new hosts, no article-detail navigation, no body scrape. Keep privacy freeze (downloads/tabs + mp.weixin.qq.com only)."
+verify = "Logged-in list 导出 yields JSON where articles that show a read count in the UI have numeric read_count, or the gap is named in `_missing`; privacy-lock tests still pass. If live run cannot happen this week, a dated smoke note within 7 days is the substitute."
+covers = ["FR-5"]
+after = ["3.2", "3.3", "4.6"]
+hitl = true
+risk = "high"
+references = ["extension/src/content-list.ts", "examples/articles.interchange.json", "architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-3"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Skill depth and shippable experiment"
+description = "Tighten skills/gzh-review (and contracts only if needed): require ≥2 non-repeating factor patterns with evidence; at least one factor or conclusion cites a references/sf-* entry; ## 04 实验 must include a pasteable title, an ~150-char/字 opening writing spec, and a single-variable constraint. No recommendation-algorithm claims."
+verify = "Re-run on a ≥10-article sample (dogfood or band fixture): report has non-duplicate factors with sf-* citation and an experiment block containing title + opening-spec + one variable; gold <10 path still declares 不做个人史排序."
+covers = ["FR-6", "FR-8", "FR-11", "FR-12"]
+after = [1, "2.1", "2.2"]
+hitl = false
+risk = "medium"
+references = ["skills/gzh-review/SKILL.md", "skills/_shared/contracts.md", "references/index.md", "dogfood/2026-10-20/report.md"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Eval harness Skill vs bare"
+description = "Add a fixed eval sample plus a scoring rubric covering degradation declaration, evidence snippets, four-block order, and shippable experiment shape (SM-2). Document how to run Skill vs bare on the same sample and record scores. No new product features beyond the harness docs/fixtures."
+verify = "A stranger can score Skill vs bare on the checked-in sample using the rubric; rubric file and sample path exist under examples/ or dogfood/eval/."
+covers = ["FR-11", "FR-12"]
+after = [2]
+hitl = false
+risk = "low"
+references = ["dogfood/2026-10-20/compare-note.md", "prd-gzh-quality-copilot/prd-gzh-quality-copilot.md"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only from deferred review findings in this epic. No new product scope."
+verify = "Leftover todos from 5.1–5.3 are landed or explicitly dropped; no new FR coverage added."
+covers = []
+after = [1, 2, 3]
+hitl = false
+risk = "low"

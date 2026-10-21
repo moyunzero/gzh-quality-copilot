@@ -1,0 +1,34 @@
+{
+  "articles": [
+    {
+      "title": "雨夜便利店的最后一班",
+      "publish_time": "2025-03-12T21:00:00+08:00",
+      "read_count": 8420,
+      "like_count": 312,
+      "share_count": 48,
+      "wow_count": 19,
+      "url": "https://example.invalid/mp/rain-night-store",
+      "body": "便利店灯管嗡嗡响。她把过期便当推到冰柜最里层，假装没看见柜台后那双湿漉漉的鞋。"
+    },
+    {
+      "title": "地铁末班车上的陌生人",
+      "publish_time": "2025-06-01T23:40:00+08:00",
+      "read_count": 1260,
+      "like_count": 87,
+      "share_count": 11,
+      "wow_count": 4,
+      "url": "https://example.invalid/mp/last-train",
+      "body": "车厢只剩三个人。他递过来一张皱巴巴的便签，上面只写着：别在下一站下。"
+    },
+    {
+      "title": "窗台上的鸽子不会说话",
+      "publish_time": "2025-09-18T08:15:00+08:00",
+      "read_count": 96,
+      "like_count": 9,
+      "share_count": 1,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/pigeons-sill",
+      "body": "每天七点它们来啄阳台栏杆。我试过喂米、喂话，它们只回以翅膀拍打的沉默。"
+    }
+  ]
+}

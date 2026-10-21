@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "gzh-review": {
+      "source": ".",
+      "sourceType": "local",
+      "computedHash": "3634cb1464b737954296e60cfea984a11c92201abd237f659d1ef2f595361a4b"
+    }
+  }
+}

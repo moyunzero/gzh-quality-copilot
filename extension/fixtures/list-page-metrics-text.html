@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>MP list fixture — title/url JSON + plain-text row metrics</title>
+  </head>
+  <body>
+    <script type="application/json" id="mp-list-embedded">
+      {
+        "app_msg_list": [
+          {
+            "title": "厨房沙漏底座里还有一张卡  原创",
+            "link": "https://mp.weixin.qq.com/s/fixture-sand"
+          },
+          {
+            "title": "计时器跳的是隔壁那张卡",
+            "link": "https://mp.weixin.qq.com/s/fixture-timer"
+          }
+        ]
+      }
+    </script>
+
+    <!-- No data-*-count attrs; engagement sits as plain integers after title (publish-list shape) -->
+    <div data-gzh-row data-title="厨房沙漏底座里还有一张卡">
+      厨房沙漏底座里还有一张卡
+      原创
+      1200 12 3 1
+    </div>
+    <div data-gzh-row data-title="计时器跳的是隔壁那张卡">
+      计时器跳的是隔壁那张卡
+      已发表
+      80 2 0 2
+    </div>
+  </body>
+</html>

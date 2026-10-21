@@ -1,0 +1,48 @@
+# epic-extension-export — build order = table order
+
+[[entry]]
+id = 1
+type = "story"
+title = "MV3 popup tracer"
+description = "Add extension/ Manifest V3 with a ~360px popup: 导出 main CTA, 会做/不会做 fold, keyboard-focusable. Two states: not on logged-in MP list page → one-line error + 改用粘贴 (no download); fixture/stub path downloads local JSON shaped like gold (`articles` array; keys title, publish_time, read_count, like_count, share_count, wow_count, url, body; counts are numbers). TypeScript. No real MP scrape yet. Honors prefers-reduced-motion."
+verify = "Person loads the unpacked extension: off the MP list page, 导出 shows paste CTA and writes no file; using the fixture/stub control downloads JSON with an `articles` array and gold field names."
+covers = ["FR-5"]
+after = ["1.2"]
+hitl = true
+risk = "high"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-2", "examples/articles.interchange.json", "ux-gzh-quality-copilot/DESIGN.md"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Own-account list extract"
+description = "Fill the same export from a content script on the author's logged-in MP article-list page only (host_permissions for that host). Do not open article pages or scrape body. Omit missing keys and list them on the article as `_missing` (e.g. `body`). No extra hosts. Progress + aria-busy; success shows local path; block double-click while running."
+verify = "Person logged into own MP list clicks 导出: a local JSON file is saved; each object uses gold keys or names gaps in `_missing`; no article-detail navigation. If that run cannot happen this week, a maintainer smoke note dated within 7 days is the substitute check."
+covers = ["FR-5"]
+after = [1]
+hitl = true
+risk = "high"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-3"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Privacy lock and enumerable permissions"
+description = "Freeze host_permissions and permissions in extension/manifest.json as the list README will copy. Popup 会做/不会做 matches that list and actual code: read own logged-in published list, local download only; no proxy-login, publish, other-account scrape, or upload to project servers. No Skill code inside the extension."
+verify = "manifest.json hosts/permissions can be copied verbatim; grep of extension/ shows no upload/publish/proxy-login; popup copy matches the freeze."
+covers = ["FR-2", "FR-5"]
+after = [2]
+hitl = false
+risk = "medium"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-7"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only from deferred review findings in this epic. No new product scope."
+verify = "Leftover todos from 3.1–3.3 are landed or explicitly dropped; no new FR coverage added."
+covers = []
+after = [1, 2, 3]
+hitl = false
+risk = "low"

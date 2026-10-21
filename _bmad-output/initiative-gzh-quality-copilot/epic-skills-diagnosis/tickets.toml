@@ -1,0 +1,60 @@
+# epic-skills-diagnosis — build order = table order
+
+[[entry]]
+id = 1
+type = "story"
+title = "Review Skill paste gold path"
+description = "Add single package skills/gzh-review/SKILL.md citing skills/_shared/contracts.md. Accept paste or file of interchange JSON and CSV (content-sniff if no extension). On the 3-article gold fixture (<10): four-block report, no personal ranking, ≥3 title candidates, 1 structure experiment plus re-ingest hint, at least one evidence snippet; mark 【推测】 only when no snippet."
+verify = "A person runs the Skill on examples/articles.interchange.json (or the CSV twin) in their Agent: output has 结论/因子/候选/实验 headings, says 不做个人史排序, includes ≥3 candidates and a re-ingest hint, and at least one locatable evidence snippet."
+covers = ["FR-4", "FR-6", "FR-7", "FR-10", "FR-11", "FR-12"]
+after = ["1.2", "1.3"]
+hitl = true
+risk = "high"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-4", "skills/_shared/contracts.md", "examples/sample-report.md"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Short-fiction reference corpus"
+description = "Add ≥5 short-fiction structure summaries under repo-root references/ plus a provenance index. Each entry has a structure-signal note and an auditable source-type/sample line. No third-party full text; no empty-shell list."
+verify = "references/ has an index and ≥5 summaries; each summary includes structure signal plus provenance; none contain a full article."
+covers = ["FR-8"]
+after = ["1.1"]
+hitl = false
+risk = "medium"
+references = ["architecture-gzh-quality-copilot/architecture-gzh-quality-copilot.md#ad-5"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Mid/high count-band fixtures and rules"
+description = "Add synthetic interchange fixtures for 10–29 and ≥30 (same schema as gold) and extend skills/gzh-review/ with those band rules plus 几乎无稿 checklist (empty paste or 1 article; no extra fixture required). ≥30 also gets a checked-in sample report. High-count + low-read uses 【低置信】. Do not claim recommendation-algorithm causality."
+verify = "10–29 and ≥30 fixture files exist with those counts; SKILL.md states all remaining FR-6/FR-7 band behaviors including 几乎无稿 checklist and no-causal rule; examples/ holds a ≥30 sample report with ≥3 relative ranks and ≥2 named-evidence factors."
+covers = ["FR-6", "FR-7"]
+after = [1]
+hitl = false
+risk = "medium"
+references = ["skills/_shared/contracts.md"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Benchmark-paste structure breakdown"
+description = "Extend the same Skill with an optional author-pasted public text (not URL-fetch). Breakdown covers hook, title structure, and rhythm; states 价值判断由作者定. Without paste, still run using references/ summaries. Do not scrape competitor read counts. Do not replace the four-block skeleton."
+verify = "SKILL.md documents the optional paste path, the three dimensions, the author-judgment sentence, and the no-paste fallback to references/; no fetch-or-scrape instruction."
+covers = ["FR-9", "FR-6"]
+after = [2, 3]
+hitl = false
+risk = "medium"
+references = ["prd-gzh-quality-copilot/addendum.md"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only from deferred review findings in this epic. No new product scope."
+verify = "Leftover todos from 2.1–2.4 are landed or explicitly dropped; no new FR coverage added."
+covers = []
+after = [1, 2, 3, 4]
+hitl = false
+risk = "low"

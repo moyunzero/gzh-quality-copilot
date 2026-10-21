@@ -1,0 +1,124 @@
+{
+  "articles": [
+    {
+      "title": "巷口的灯还没关",
+      "publish_time": "2025-02-02T19:00:00+08:00",
+      "read_count": 80,
+      "like_count": 6,
+      "share_count": 0,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-01",
+      "body": "巷口那盏灯只照得到第三级台阶。她把钥匙握出汗。"
+    },
+    {
+      "title": "二楼的收音机",
+      "publish_time": "2025-03-03T20:00:00+08:00",
+      "read_count": 120,
+      "like_count": 9,
+      "share_count": 1,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-02",
+      "body": "收音机停在一个没有节目的频段。沙沙声像有人隔着墙呼吸。"
+    },
+    {
+      "title": "未拆的快递",
+      "publish_time": "2025-04-04T21:00:00+08:00",
+      "read_count": 160,
+      "like_count": 12,
+      "share_count": 1,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-03",
+      "body": "快递盒在门后歪着。运单上的名字不是这户的。"
+    },
+    {
+      "title": "夜班公交的最后一站",
+      "publish_time": "2025-05-05T22:00:00+08:00",
+      "read_count": 200,
+      "like_count": 15,
+      "share_count": 1,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-04",
+      "body": "司机没报站。车厢里只剩她和一把湿雨伞。"
+    },
+    {
+      "title": "阳台多了一双鞋",
+      "publish_time": "2025-06-06T23:00:00+08:00",
+      "read_count": 240,
+      "like_count": 18,
+      "share_count": 2,
+      "wow_count": 0,
+      "url": "https://example.invalid/mp/sf-05",
+      "body": "鞋码比他的小两号。鞋带是新系的。"
+    },
+    {
+      "title": "冰箱里的半个橙子",
+      "publish_time": "2025-07-07T19:00:00+08:00",
+      "read_count": 280,
+      "like_count": 21,
+      "share_count": 2,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-06",
+      "body": "橙子切面已经干了。旁边贴着一张过期的便签。"
+    },
+    {
+      "title": "停电的五分钟",
+      "publish_time": "2025-08-08T20:00:00+08:00",
+      "read_count": 320,
+      "like_count": 24,
+      "share_count": 3,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-07",
+      "body": "电梯停在两层之间。有人在黑暗里数硬币。"
+    },
+    {
+      "title": "旧日历还翻在三月",
+      "publish_time": "2025-09-09T21:00:00+08:00",
+      "read_count": 360,
+      "like_count": 27,
+      "share_count": 3,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-08",
+      "body": "三月那页有个圈。圈里没有字。"
+    },
+    {
+      "title": "楼下在练琴",
+      "publish_time": "2025-10-10T22:00:00+08:00",
+      "read_count": 400,
+      "like_count": 30,
+      "share_count": 3,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-09",
+      "body": "同一小节弹了十一遍。第十二遍停住了。"
+    },
+    {
+      "title": "窗玻璃上的指纹",
+      "publish_time": "2025-11-11T23:00:00+08:00",
+      "read_count": 440,
+      "like_count": 33,
+      "share_count": 4,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-10",
+      "body": "指纹是从外面按上来的。这层楼没有外廊。"
+    },
+    {
+      "title": "外卖单写错了楼",
+      "publish_time": "2025-12-12T19:00:00+08:00",
+      "read_count": 480,
+      "like_count": 36,
+      "share_count": 4,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-11",
+      "body": "敲门声停在对面。她透过猫眼只看见一双运动鞋。"
+    },
+    {
+      "title": "迟到的回信",
+      "publish_time": "2025-01-13T20:00:00+08:00",
+      "read_count": 520,
+      "like_count": 39,
+      "share_count": 4,
+      "wow_count": 1,
+      "url": "https://example.invalid/mp/sf-12",
+      "body": "信封是去年的邮戳。信纸是空白的。"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "公众号质量 Copilot",
+  "version": "0.1.0",
+  "description": "本号已发表列表导出为本地 JSON；失败则改用粘贴。",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "本号导出"
+  },
+  "permissions": ["downloads", "tabs", "scripting"],
+  "host_permissions": ["https://mp.weixin.qq.com/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mp.weixin.qq.com/cgi-bin/appmsg*",
+        "https://mp.weixin.qq.com/cgi-bin/appmsgpublish*"
+      ],
+      "js": ["content-list.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'"
+  }
+}
