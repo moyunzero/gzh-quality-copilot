@@ -931,16 +931,14 @@ export function findNextPageControl(root: ParentNode): HTMLElement | null {
   ) as HTMLElement[];
 
   if (miniBtns.length > 0) {
-    // GreasyFork exporters: page 1 → first mini btn; later pages → second (prev + next).
-    let candidate: HTMLElement | undefined;
-    if (!Number.isNaN(pageNow) && pageNow <= 1) {
-      candidate = miniBtns[0];
-    } else if (miniBtns.length >= 2) {
-      candidate = miniBtns[1];
-    } else {
-      candidate = miniBtns[miniBtns.length - 1];
-    }
-    if (candidate && !controlLooksDisabled(candidate)) return candidate;
+    // Prefer last enabled mini button that is not「上一页」(typically「下一页」icon/text).
+    const enabled = miniBtns.filter((b) => !controlLooksDisabled(b));
+    const nextish = enabled.filter((b) => {
+      const t = (b.textContent ?? "").replace(/\s+/g, " ").trim();
+      return !/^上一?页/.test(t);
+    });
+    const candidate = nextish[nextish.length - 1] ?? enabled[enabled.length - 1];
+    if (candidate) return candidate;
   }
 
   // Click the page number after current, when present.

@@ -9,6 +9,9 @@
   },
   "permissions": ["downloads", "tabs", "scripting"],
   "host_permissions": ["https://mp.weixin.qq.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [

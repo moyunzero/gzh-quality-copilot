@@ -45,6 +45,7 @@ describe("no forbidden extension behaviors", () => {
       "src/popup.ts",
       "src/logic.ts",
       "src/content-list.ts",
+      "src/background.ts",
       "manifest.json",
     ];
     for (const rel of files) {

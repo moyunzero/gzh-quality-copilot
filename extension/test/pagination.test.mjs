@@ -54,24 +54,23 @@ describe("findNextPageControl", () => {
     assert.equal(findNextPageControl(root), null);
   });
 
-  it("picks WeUI mini next button using current page index", () => {
-    const btn0 = {
+  it("picks last non-prev WeUI mini button as next", () => {
+    const prev = {
+      textContent: "上一页",
+      className: "weui-desktop-btn weui-desktop-btn_default weui-desktop-btn_mini",
+      disabled: false,
+      getAttribute: () => null,
+    };
+    const next = {
       textContent: "",
       className: "weui-desktop-btn weui-desktop-btn_default weui-desktop-btn_mini",
       disabled: false,
       getAttribute: () => null,
     };
-    const btn1 = {
-      textContent: "",
-      className: "weui-desktop-btn weui-desktop-btn_default weui-desktop-btn_mini",
-      disabled: false,
-      getAttribute: () => null,
-    };
-    const current = { textContent: "2", classList: { contains: () => true } };
     const pager = {
-      querySelector: (sel) => (sel.includes("num_current") ? current : null),
+      querySelector: () => null,
       querySelectorAll: (sel) => {
-        if (sel.includes("btn_mini")) return [btn0, btn1];
+        if (sel.includes("btn_mini")) return [prev, next];
         if (sel.includes("pagination__num")) return [];
         return [];
       },
@@ -80,7 +79,7 @@ describe("findNextPageControl", () => {
       querySelectorAll: (sel) => (sel.includes("a, button") ? [] : []),
       querySelector: (sel) => (sel.includes("pagination") ? pager : null),
     };
-    assert.equal(findNextPageControl(root), btn1);
+    assert.equal(findNextPageControl(root), next);
   });
 });
 
@@ -172,12 +171,24 @@ describe("popup multipage UI wiring", () => {
     assert.match(html, /id="multipage-opt"/);
     assert.match(html, /翻完所有页/);
     assert.match(html, /id="cancel-btn"/);
-    assert.match(src, /EXTRACT_MULTI_MESSAGE/);
-    assert.match(src, /CANCEL_MULTI_MESSAGE/);
+    assert.match(src, /BG_START_MULTI_MESSAGE/);
+    assert.match(src, /BG_CANCEL_MULTI_MESSAGE/);
     assert.match(src, /multipageOpt\.checked/);
     const onExport = src.slice(src.indexOf("async function onExport"), src.indexOf("async function onCancel"));
     assert.match(onExport, /if \(!multi\)/);
     assert.match(onExport, /requestExtract/);
-    assert.match(onExport, /requestMultiExtract/);
+    assert.match(onExport, /startBackgroundMulti/);
+  });
+});
+
+describe("background multi export", () => {
+  it("service worker starts walk and downloads without awaiting popup", () => {
+    const src = readFileSync(join(root, "src/background.ts"), "utf8");
+    const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
+    assert.equal(manifest.background?.service_worker, "background.js");
+    assert.match(src, /BG_START_MULTI_MESSAGE/);
+    assert.match(src, /EXTRACT_MULTI_MESSAGE/);
+    assert.match(src, /chrome\.downloads\.download/);
+    assert.match(src, /sendResponse\(\{ ok: true, started: true \}\)/);
   });
 });

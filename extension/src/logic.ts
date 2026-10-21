@@ -24,6 +24,11 @@ export const EXTRACT_MULTI_MESSAGE = "EXTRACT_LIST_MULTI" as const;
 /** Abort in-flight multi-page walk. */
 export const CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI" as const;
 
+/** Popup → service worker: start multi-page export (download survives popup close). */
+export const BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT" as const;
+/** Popup → service worker: cancel in-flight multi-page export. */
+export const BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT" as const;
+
 /** Safety cap so a broken pager cannot loop forever. */
 export const MULTI_PAGE_CAP = 50;
 

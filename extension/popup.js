@@ -14,8 +14,8 @@
   var COUNT_KEYS = ["read_count", "like_count", "share_count", "wow_count"];
   var FIXTURE_FILENAME = "articles.interchange.json";
   var EXTRACT_MESSAGE = "EXTRACT_LIST";
-  var EXTRACT_MULTI_MESSAGE = "EXTRACT_LIST_MULTI";
-  var CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI";
+  var BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT";
+  var BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT";
   function isCountKey(key) {
     return COUNT_KEYS.includes(key);
   }
@@ -255,71 +255,27 @@
       });
     }
   }
-  async function requestMultiExtract(tabId) {
-    if (typeof chrome.scripting?.executeScript !== "function") {
-      throw new Error("inject unavailable");
-    }
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content-list.js"]
+  async function startBackgroundMulti(tabId) {
+    const reply = await chrome.runtime.sendMessage({
+      type: BG_START_MULTI_MESSAGE,
+      tabId
     });
-    const reply = await chrome.tabs.sendMessage(tabId, {
-      type: EXTRACT_MULTI_MESSAGE
-    });
-    if (!reply || typeof reply !== "object" || !("ok" in reply)) {
-      throw new Error("multi extract unavailable \u2014 refresh the list tab");
+    if (!reply?.ok || !reply.started) {
+      throw new Error(reply?.error ?? "background multi start failed");
     }
-    return reply;
   }
   async function requestCancel(tabId) {
     try {
-      await chrome.tabs.sendMessage(tabId, { type: CANCEL_MULTI_MESSAGE });
+      await chrome.runtime.sendMessage({ type: BG_CANCEL_MULTI_MESSAGE, tabId });
     } catch {
     }
-  }
-  function stopReasonMessage(reason, count, pages) {
-    const base = `\u5DF2\u4E0B\u8F7D ${FIXTURE_FILENAME}\uFF08${count} \u7BC7 / ${pages} \u9875\uFF09`;
-    switch (reason) {
-      case "cancel":
-        return count > 0 ? `\u5DF2\u53D6\u6D88\u3002${base}` : "\u5DF2\u53D6\u6D88\u3002";
-      case "cap":
-        return `${base} \xB7 \u5DF2\u8FBE\u7FFB\u9875\u4E0A\u9650`;
-      case "error":
-        return count > 0 ? `\u7FFB\u9875\u4E2D\u65AD\u3002${base}` : "\u5217\u8868\u4E3A\u7A7A\u6216\u65E0\u6CD5\u89E3\u6790\u3002";
-      case "end":
-        if (pages <= 1) {
-          return `${base}\u3002\u82E5\u540E\u53F0\u8FD8\u6709\u5206\u9875\u5374\u53EA\u6709\u4E00\u9875\uFF0C\u8BF7\u5237\u65B0\u5217\u8868\u9875\u540E\u91CD\u8BD5\uFF08\u4E0B\u4E00\u9875\u63A7\u4EF6\u53EF\u80FD\u672A\u8BC6\u522B\uFF09\u3002`;
-        }
-        return `${base} \xB7 \u5DF2\u5230\u672B\u9875`;
-      default: {
-        const _exhaustive = reason;
-        return _exhaustive;
-      }
-    }
-  }
-  async function finishWithArticles(rawArticles, stopReason, pagesWalked) {
-    if (rawArticles.length === 0) {
-      resetProgress();
-      if (stopReason === "cancel") {
-        showStatus("\u5DF2\u53D6\u6D88\u3002", "note");
-      } else {
-        showStatus("\u5217\u8868\u4E3A\u7A7A\u6216\u65E0\u6CD5\u89E3\u6790\u3002", "danger");
-      }
-      showPasteCta();
-      return;
-    }
-    const payload = normalizeArticles(rawArticles);
-    setProgress(0.8);
-    await downloadJson(payload, FIXTURE_FILENAME);
-    markProgressComplete();
-    const kind = stopReason === "cancel" || stopReason === "error" || stopReason === "end" && pagesWalked <= 1 ? "note" : "ok";
-    showStatus(stopReasonMessage(stopReason, rawArticles.length, pagesWalked), kind);
   }
   var cancelTabId;
   async function onExport() {
     if (exportRunning) return;
     const multi = multipageOpt.checked;
     setBusy(true, multi);
+    let backgroundMultiRunning = false;
     try {
       hidePaste();
       resetProgress();
@@ -347,9 +303,9 @@
       cancelTabId = tab.id;
       setProgress(0.2);
       if (!multi) {
-        let reply2;
+        let reply;
         try {
-          reply2 = await requestExtract(tab.id);
+          reply = await requestExtract(tab.id);
         } catch {
           resetProgress();
           showStatus("\u8BF7\u5237\u65B0\u5DF2\u53D1\u8868\u5217\u8868\u9875\u540E\u91CD\u8BD5\u3002", "danger");
@@ -357,13 +313,13 @@
           return;
         }
         setProgress(0.55);
-        if (!reply2 || reply2.ok === false) {
+        if (!reply || reply.ok === false) {
           resetProgress();
           showStatus("\u5217\u8868\u4E3A\u7A7A\u6216\u65E0\u6CD5\u89E3\u6790\u3002", "danger");
           showPasteCta();
           return;
         }
-        const rawArticles = reply2.articles ?? [];
+        const rawArticles = reply.articles ?? [];
         if (rawArticles.length === 0) {
           resetProgress();
           showStatus("\u5217\u8868\u4E3A\u7A7A\u6216\u65E0\u6CD5\u89E3\u6790\u3002", "danger");
@@ -377,32 +333,34 @@
         showStatus(`\u5DF2\u4E0B\u8F7D ${FIXTURE_FILENAME}`, "ok");
         return;
       }
-      showStatus("\u6B63\u5728\u7FFB\u9875\u5BFC\u51FA\u2026\u53EF\u70B9\u53D6\u6D88\u3002", "note");
-      setProgress(0.35);
-      let reply;
+      showStatus("\u6B63\u5728\u7FFB\u9875\u5BFC\u51FA\u2026\u53EF\u5173\u95ED\u5F39\u7A97\uFF0C\u5B8C\u6210\u540E\u81EA\u52A8\u4E0B\u8F7D\uFF1B\u672A\u5173\u65F6\u53EF\u70B9\u53D6\u6D88\u3002", "note");
+      setProgress(0.45);
       try {
-        reply = await requestMultiExtract(tab.id);
+        await startBackgroundMulti(tab.id);
       } catch {
         resetProgress();
-        showStatus("\u7FFB\u9875\u811A\u672C\u672A\u5C31\u7EEA\uFF1A\u8BF7\u5237\u65B0\u5DF2\u53D1\u8868\u5217\u8868\u9875\u540E\u91CD\u8BD5\u3002", "danger");
+        showStatus("\u7FFB\u9875\u5BFC\u51FA\u672A\u80FD\u542F\u52A8\uFF1A\u8BF7\u5237\u65B0\u5DF2\u53D1\u8868\u5217\u8868\u9875\u540E\u91CD\u8BD5\u3002", "danger");
         showPasteCta();
         return;
       }
-      setProgress(0.7);
-      if (!reply || reply.ok === false) {
-        resetProgress();
-        showStatus("\u5217\u8868\u4E3A\u7A7A\u6216\u65E0\u6CD5\u89E3\u6790\u3002", "danger");
-        showPasteCta();
-        return;
-      }
-      await finishWithArticles(reply.articles ?? [], reply.stopReason, reply.pagesWalked);
+      markProgressComplete();
+      showStatus("\u7FFB\u9875\u8FDB\u884C\u4E2D\uFF1A\u8BF7\u7A0D\u5019\u67E5\u770B\u4E0B\u8F7D\uFF08articles.interchange.json\uFF09\u3002", "note");
+      backgroundMultiRunning = true;
+      exportRunning = true;
+      reveal(cancelBtn);
+      cancelBtn.disabled = false;
+      exportBtn.disabled = true;
+      fixtureBtn.disabled = true;
+      multipageOpt.disabled = true;
     } catch {
       resetProgress();
       showStatus("\u672C\u5730\u4E0B\u8F7D\u5931\u8D25\u3002", "danger");
       showPasteCta();
     } finally {
-      cancelTabId = void 0;
-      setBusy(false);
+      if (!backgroundMultiRunning) {
+        cancelTabId = void 0;
+        setBusy(false);
+      }
     }
   }
   async function onCancel() {

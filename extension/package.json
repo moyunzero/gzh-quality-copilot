@@ -2,7 +2,7 @@
   "name": "gzh-quality-copilot-extension",
   "private": true,
   "scripts": {
-    "build": "esbuild src/popup.ts --bundle --outfile=popup.js --format=iife && esbuild src/content-list.ts --bundle --outfile=content-list.js --format=iife",
+    "build": "esbuild src/popup.ts --bundle --outfile=popup.js --format=iife && esbuild src/content-list.ts --bundle --outfile=content-list.js --format=iife && esbuild src/background.ts --bundle --outfile=background.js --format=iife",
     "test": "esbuild src/logic.ts --bundle --outfile=test/logic.mjs --format=esm && esbuild src/content-list.ts --bundle --outfile=test/content-list.mjs --format=esm && node --test test/*.test.mjs"
   },
   "devDependencies": {
