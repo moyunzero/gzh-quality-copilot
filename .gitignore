@@ -49,3 +49,6 @@ own-account*.csv
 # Catch-all private pocket (keep a local README inside; whole dir ignored)
 dogfood/private/
 **/local-only/
+
+# --- local SEO notes / GSC·Bing exports (never publish) ---
+seo-analysis/
