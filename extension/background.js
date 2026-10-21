@@ -13,10 +13,27 @@
   ];
   var COUNT_KEYS = ["read_count", "like_count", "share_count", "wow_count"];
   var FIXTURE_FILENAME = "articles.interchange.json";
-  var EXTRACT_MULTI_MESSAGE = "EXTRACT_LIST_MULTI";
-  var CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI";
   var BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT";
   var BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT";
+  var EXTRACT_PAGE_META_MESSAGE = "EXTRACT_LIST_PAGE_META";
+  var MULTI_PAGE_CAP = 50;
+  function rowDedupeKey(row) {
+    const title = String(row.title ?? "").trim().replace(/\s+/g, " ").replace(/\s*原创\s*$/u, "").trim();
+    if (!title) return "";
+    const url = typeof row.url === "string" ? row.url.trim() : "";
+    return url ? `${title}\0${url}` : title;
+  }
+  function mergePageRows(acc, page) {
+    const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
+    const out = [...acc];
+    for (const row of page) {
+      const key = rowDedupeKey(row);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(row);
+    }
+    return out;
+  }
   function isCountKey(key) {
     return COUNT_KEYS.includes(key);
   }
@@ -61,6 +78,10 @@
   }
 
   // src/background.ts
+  var multiCancelled = false;
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
   async function downloadJson(payload, filename) {
     const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(payload))}`;
     await chrome.downloads.download({
@@ -69,21 +90,76 @@
       saveAs: false
     });
   }
-  async function runMultiExport(tabId) {
+  function waitTabNavigateComplete(tabId, timeoutMs = 25e3) {
+    return new Promise((resolve, reject) => {
+      let sawLoading = false;
+      const timer = setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        reject(new Error("tab load timeout"));
+      }, timeoutMs);
+      function onUpdated(id, info) {
+        if (id !== tabId) return;
+        if (info.status === "loading") sawLoading = true;
+        if (info.status === "complete" && sawLoading) {
+          clearTimeout(timer);
+          chrome.tabs.onUpdated.removeListener(onUpdated);
+          resolve();
+        }
+      }
+      chrome.tabs.onUpdated.addListener(onUpdated);
+    });
+  }
+  async function fetchPageMeta(tabId) {
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ["content-list.js"]
     });
-    const reply = await chrome.tabs.sendMessage(tabId, {
-      type: EXTRACT_MULTI_MESSAGE
-    });
-    if (!reply || typeof reply !== "object" || !("ok" in reply) || reply.ok === false) {
-      return;
+    let lastErr;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await delay(350 + attempt * 150);
+      try {
+        return await chrome.tabs.sendMessage(tabId, {
+          type: EXTRACT_PAGE_META_MESSAGE
+        });
+      } catch (err) {
+        lastErr = err;
+      }
     }
-    const raw = reply.articles ?? [];
-    if (raw.length === 0) return;
-    const payload = normalizeArticles(raw);
-    await downloadJson(payload, FIXTURE_FILENAME);
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr ?? "page meta failed"));
+  }
+  async function runMultiExport(tabId) {
+    multiCancelled = false;
+    const keepAlive = setInterval(() => {
+      void chrome.runtime.getPlatformInfo();
+    }, 15e3);
+    let articles = [];
+    try {
+      for (let i = 0; i < MULTI_PAGE_CAP; i++) {
+        if (multiCancelled) break;
+        let meta;
+        try {
+          meta = await fetchPageMeta(tabId);
+        } catch {
+          break;
+        }
+        if (!meta || meta.ok === false) break;
+        articles = mergePageRows(articles, meta.articles ?? []);
+        if (!meta.nextUrl) break;
+        if (multiCancelled) break;
+        await chrome.tabs.update(tabId, { url: meta.nextUrl });
+        try {
+          await waitTabNavigateComplete(tabId);
+        } catch {
+          break;
+        }
+        await delay(800);
+      }
+      if (articles.length > 0) {
+        await downloadJson(normalizeArticles(articles), FIXTURE_FILENAME);
+      }
+    } finally {
+      clearInterval(keepAlive);
+    }
   }
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message !== "object") return;
@@ -99,9 +175,7 @@
       return;
     }
     if (type === BG_CANCEL_MULTI_MESSAGE) {
-      if (typeof tabId === "number") {
-        void chrome.tabs.sendMessage(tabId, { type: CANCEL_MULTI_MESSAGE }).catch(() => void 0);
-      }
+      multiCancelled = true;
       sendResponse({ ok: true });
     }
   });

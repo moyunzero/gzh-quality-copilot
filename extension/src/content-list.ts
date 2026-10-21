@@ -2,12 +2,20 @@ import {
   CANCEL_MULTI_MESSAGE,
   EXTRACT_MESSAGE,
   EXTRACT_MULTI_MESSAGE,
+  EXTRACT_PAGE_META_MESSAGE,
   MULTI_PAGE_CAP,
+  computeNextListPageUrl,
+  mergePageRows,
+  rowDedupeKey,
+  totalPagesFromPagerText,
   type ExtractReply,
   type MultiExtractReply,
+  type PageMetaReply,
   type RawRow,
   type WalkStopReason,
 } from "./logic";
+
+export { mergePageRows, rowDedupeKey };
 
 const MERGE_COUNT_KEYS = ["read_count", "like_count", "share_count", "wow_count"] as const;
 
@@ -868,27 +876,6 @@ function handleExtract(): ExtractReply {
   }
 }
 
-/** Dedupe key for multi-page merge (title + optional url). */
-export function rowDedupeKey(row: RawRow): string {
-  const title = normalizeTitleForMatch(String(row.title ?? ""));
-  if (!title) return "";
-  const url = typeof row.url === "string" ? row.url.trim() : "";
-  return url ? `${title}\0${url}` : title;
-}
-
-/** Append page rows into accumulator; skip duplicate keys. */
-export function mergePageRows(acc: RawRow[], page: RawRow[]): RawRow[] {
-  const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
-  const out = [...acc];
-  for (const row of page) {
-    const key = rowDedupeKey(row);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(row);
-  }
-  return out;
-}
-
 function controlLooksDisabled(el: Element): boolean {
   if (el.getAttribute("aria-disabled") === "true") return true;
   if ((el as HTMLButtonElement).disabled) return true;
@@ -1034,6 +1021,27 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function pagerNumTexts(root: ParentNode): string[] {
+  if (!("querySelectorAll" in root)) return [];
+  return Array.from(root.querySelectorAll(".weui-desktop-pagination__num")).map(
+    (el) => (el.textContent ?? "").trim(),
+  );
+}
+
+function handlePageMeta(): PageMetaReply {
+  try {
+    const articles = extractArticlesFromDocument(document);
+    const nextUrl = computeNextListPageUrl(location.href, pagerNumTexts(document));
+    const nums = pagerNumTexts(document);
+    const currentEl = document.querySelector(".weui-desktop-pagination__num_current");
+    const pageNow = currentEl ? parseInt((currentEl.textContent ?? "").trim(), 10) || 1 : 1;
+    const totalPages = Math.max(pageNow, totalPagesFromPagerText(nums));
+    return { ok: true, articles, nextUrl, pageNow, totalPages };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 async function handleMultiExtract(): Promise<MultiExtractReply> {
   multiAbort = false;
   try {
@@ -1097,6 +1105,10 @@ function installListMessageApi(): void {
       }
       if (type === EXTRACT_MESSAGE) {
         sendResponse(handleExtract());
+        return;
+      }
+      if (type === EXTRACT_PAGE_META_MESSAGE) {
+        sendResponse(handlePageMeta());
         return;
       }
       if (type === EXTRACT_MULTI_MESSAGE) {

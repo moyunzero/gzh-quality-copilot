@@ -4,8 +4,28 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { findNextPageControl, mergePageRows, walkListPages } from "./content-list.mjs";
+import { computeNextListPageUrl, totalPagesFromPagerText } from "./logic.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+describe("computeNextListPageUrl", () => {
+  it("advances begin by count until last page", () => {
+    const base =
+      "https://mp.weixin.qq.com/cgi-bin/appmsgpublish?sub=list&begin=0&count=10&token=t&lang=zh_CN";
+    const nums = ["1", "2", "16"];
+    assert.equal(totalPagesFromPagerText(nums), 16);
+    const next = computeNextListPageUrl(base, nums);
+    assert.ok(next);
+    assert.match(next, /begin=10/);
+    const last =
+      "https://mp.weixin.qq.com/cgi-bin/appmsgpublish?sub=list&begin=150&count=10&token=t&lang=zh_CN";
+    assert.equal(computeNextListPageUrl(last, nums), null);
+  });
+
+  it("returns null for non-mp hosts", () => {
+    assert.equal(computeNextListPageUrl("https://example.com/?begin=0&count=10", ["1", "2"]), null);
+  });
+});
 
 describe("mergePageRows", () => {
   it("grows across pages and skips duplicate titles", () => {
@@ -182,13 +202,15 @@ describe("popup multipage UI wiring", () => {
 });
 
 describe("background multi export", () => {
-  it("service worker starts walk and downloads without awaiting popup", () => {
+  it("service worker paginates via begin URL and downloads without awaiting popup", () => {
     const src = readFileSync(join(root, "src/background.ts"), "utf8");
     const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
     assert.equal(manifest.background?.service_worker, "background.js");
     assert.match(src, /BG_START_MULTI_MESSAGE/);
-    assert.match(src, /EXTRACT_MULTI_MESSAGE/);
+    assert.match(src, /EXTRACT_PAGE_META_MESSAGE/);
+    assert.match(src, /tabs\.update/);
     assert.match(src, /chrome\.downloads\.download/);
     assert.match(src, /sendResponse\(\{ ok: true, started: true \}\)/);
+    assert.match(src, /getPlatformInfo/);
   });
 });
