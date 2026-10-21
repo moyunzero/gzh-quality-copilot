@@ -176,6 +176,21 @@ button:focus-visible {
   color: var(--ink-muted);
 }
 
+.opt-in {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.opt-in input {
+  margin: 0;
+}
+
 .paste-cta {
   margin-top: 8px;
 }

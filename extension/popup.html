@@ -21,8 +21,14 @@
 
       <div id="status" class="status" hidden role="status" aria-live="polite"></div>
 
+      <label class="opt-in" for="multipage-opt">
+        <input type="checkbox" id="multipage-opt" />
+        翻完所有页
+      </label>
+
       <div class="actions">
         <button type="button" id="export-btn" class="cta-primary">导出</button>
+        <button type="button" id="cancel-btn" class="cta-ghost" hidden>取消</button>
         <button type="button" id="fixture-btn" class="cta-ghost">夹具导出</button>
       </div>
 
@@ -42,7 +48,7 @@
             <ul>
               <li>权限冻结（与 <code>manifest.json</code> 同源）：<code>downloads</code>、<code>tabs</code>、<code>scripting</code>；页面访问主机仅 <code>https://mp.weixin.qq.com/*</code>（校样字体 CDN 除外）</li>
               <li>检查当前标签是否为本号已发表列表（路径 <code>/cgi-bin/appmsg*</code> 或 <code>/cgi-bin/appmsgpublish*</code>）</li>
-              <li>在当前列表页读取可见行／页内列表数据，规范化为金样字段并本地下载 JSON（正文 <code>body</code> 始终省略）</li>
+              <li>在当前列表页读取可见行／页内列表数据，规范化为金样字段并本地下载 JSON（正文 <code>body</code> 始终省略）；勾选「翻完所有页」时可翻页合并（可取消）</li>
               <li>本地下载夹具 JSON（金样字段，计数为数字）</li>
               <li>失败时给出「改用粘贴」，不下载文件</li>
             </ul>

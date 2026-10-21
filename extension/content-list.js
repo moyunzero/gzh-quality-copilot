@@ -2,6 +2,9 @@
 (() => {
   // src/logic.ts
   var EXTRACT_MESSAGE = "EXTRACT_LIST";
+  var EXTRACT_MULTI_MESSAGE = "EXTRACT_LIST_MULTI";
+  var CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI";
+  var MULTI_PAGE_CAP = 50;
 
   // src/content-list.ts
   var MERGE_COUNT_KEYS = ["read_count", "like_count", "share_count", "wow_count"];
@@ -678,13 +681,152 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   }
+  function rowDedupeKey(row) {
+    const title = normalizeTitleForMatch(String(row.title ?? ""));
+    if (!title) return "";
+    const url = typeof row.url === "string" ? row.url.trim() : "";
+    return url ? `${title}\0${url}` : title;
+  }
+  function mergePageRows(acc, page) {
+    const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
+    const out = [...acc];
+    for (const row of page) {
+      const key = rowDedupeKey(row);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(row);
+    }
+    return out;
+  }
+  function controlLooksDisabled(el) {
+    if (el.getAttribute("aria-disabled") === "true") return true;
+    if (el.disabled) return true;
+    const cls = el.className?.toString?.() ?? "";
+    if (/\bdisabled\b/i.test(cls) || /__nav_disabled\b/i.test(cls) || /_disabled\b/i.test(cls)) {
+      return true;
+    }
+    return false;
+  }
+  function findNextPageControl(root) {
+    const nodes = root.querySelectorAll("a, button, span[role='button'], div[role='button']");
+    for (const node of Array.from(nodes)) {
+      const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (text !== "\u4E0B\u4E00\u9875" && !/^下一页/.test(text)) continue;
+      if (controlLooksDisabled(node)) continue;
+      return node;
+    }
+    return null;
+  }
+  async function walkListPages(opts) {
+    const maxPages = opts.maxPages ?? MULTI_PAGE_CAP;
+    let articles = [];
+    let pagesWalked = 0;
+    let stopReason = "end";
+    try {
+      while (pagesWalked < maxPages) {
+        if (opts.shouldAbort()) {
+          stopReason = "cancel";
+          break;
+        }
+        const page = opts.extract();
+        articles = mergePageRows(articles, page);
+        pagesWalked += 1;
+        if (opts.shouldAbort()) {
+          stopReason = "cancel";
+          break;
+        }
+        const next = opts.findNext();
+        if (!next) {
+          stopReason = "end";
+          break;
+        }
+        if (pagesWalked >= maxPages) {
+          stopReason = "cap";
+          break;
+        }
+        const beforeKeys = new Set(page.map(rowDedupeKey).filter(Boolean));
+        await opts.clickNext(next);
+        await opts.waitAfterClick();
+        if (opts.shouldAbort()) {
+          stopReason = "cancel";
+          break;
+        }
+        const after = opts.extract();
+        const afterKeys = after.map(rowDedupeKey).filter(Boolean);
+        const changed = afterKeys.some((k) => !beforeKeys.has(k));
+        if (!changed) {
+          articles = mergePageRows(articles, after);
+          stopReason = "error";
+          break;
+        }
+      }
+      if (pagesWalked >= maxPages && stopReason === "end") {
+        const next = opts.findNext();
+        if (next) stopReason = "cap";
+      }
+    } catch {
+      stopReason = "error";
+    }
+    return { articles, stopReason, pagesWalked };
+  }
+  var multiAbort = false;
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  async function handleMultiExtract() {
+    multiAbort = false;
+    try {
+      let fingerprint = () => extractArticlesFromDocument(document).map(rowDedupeKey).filter(Boolean).join("|");
+      const result = await walkListPages({
+        extract: () => extractArticlesFromDocument(document),
+        findNext: () => findNextPageControl(document),
+        clickNext: (el) => {
+          el.click();
+        },
+        waitAfterClick: async () => {
+          const before = fingerprint();
+          const deadline = Date.now() + 4e3;
+          while (Date.now() < deadline) {
+            if (multiAbort) return;
+            await delay(200);
+            if (fingerprint() !== before) return;
+          }
+        },
+        shouldAbort: () => multiAbort,
+        maxPages: MULTI_PAGE_CAP
+      });
+      return {
+        ok: true,
+        articles: result.articles,
+        stopReason: result.stopReason,
+        pagesWalked: result.pagesWalked
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+        stopReason: "error"
+      };
+    }
+  }
   if (typeof chrome !== "undefined" && chrome.runtime?.onMessage && typeof window !== "undefined" && !window.__gzhQcListBound) {
     window.__gzhQcListBound = true;
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (!message || typeof message !== "object" || message.type !== EXTRACT_MESSAGE) {
+      if (!message || typeof message !== "object") return;
+      const type = message.type;
+      if (type === CANCEL_MULTI_MESSAGE) {
+        multiAbort = true;
+        sendResponse({ ok: true });
         return;
       }
-      sendResponse(handleExtract());
+      if (type === EXTRACT_MESSAGE) {
+        sendResponse(handleExtract());
+        return;
+      }
+      if (type === EXTRACT_MULTI_MESSAGE) {
+        void handleMultiExtract().then(sendResponse);
+        return true;
+      }
     });
   }
 })();

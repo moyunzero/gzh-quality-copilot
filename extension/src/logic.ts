@@ -19,12 +19,30 @@ export const FIXTURE_FILENAME = "articles.interchange.json";
 
 /** Popup ↔ content-script message type for list extract. */
 export const EXTRACT_MESSAGE = "EXTRACT_LIST" as const;
+/** Opt-in multi-page walk (content script). */
+export const EXTRACT_MULTI_MESSAGE = "EXTRACT_LIST_MULTI" as const;
+/** Abort in-flight multi-page walk. */
+export const CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI" as const;
+
+/** Safety cap so a broken pager cannot loop forever. */
+export const MULTI_PAGE_CAP = 50;
 
 export type RawRow = Record<string, unknown>;
 
 export type ExtractOk = { ok: true; articles: RawRow[] };
 export type ExtractErr = { ok: false; error: string };
 export type ExtractReply = ExtractOk | ExtractErr;
+
+export type WalkStopReason = "end" | "cancel" | "cap" | "error";
+
+export type MultiExtractOk = {
+  ok: true;
+  articles: RawRow[];
+  stopReason: WalkStopReason;
+  pagesWalked: number;
+};
+export type MultiExtractErr = { ok: false; error: string; stopReason: "error" };
+export type MultiExtractReply = MultiExtractOk | MultiExtractErr;
 
 export type NormalizedArticle = {
   title?: string;
