@@ -1,0 +1,48 @@
+# epic-maturity-extension-eval — build order = table order
+
+[[entry]]
+id = 1
+type = "story"
+title = "Pre-export login/list status"
+description = "Popup shows readable status before 导出: whether the active tab looks like a logged-in own-account published-list context (ok / not-list / not-logged-in or equivalent). Status must not require clicking 导出. Align copy with EXPERIENCE IA; no new hosts; privacy freeze unchanged."
+verify = "On a list tab and a non-list tab, open popup without exporting and read distinct status text; existing export path still works; unit/popup tests cover status branches."
+covers = ["CAP-1"]
+after = ["3.2", "3.3"]
+hitl = true
+risk = "medium"
+references = ["extension/", "ux-gzh-quality-copilot/EXPERIENCE.md", "spec-maturity-post-mvp/spec-maturity-post-mvp.md"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Opt-in multi-page export with cancel"
+description = "Add opt-in control so 导出 walks subsequent list pages only when checked; provide mid-run 取消 that stops pagination; default unchecked = current page only. Clear stop/end reason in UI. Own-account list only; no new hosts; fragile pager handled with tests + HITL smoke note."
+verify = "Unchecked export = one page; checked multi-page dogfood (or fixture-driven pager) yields more rows than page one; cancel stops with visible reason; privacy-lock tests still pass."
+covers = ["CAP-2"]
+after = [1]
+hitl = true
+risk = "high"
+references = ["extension/src/", "spec-maturity-post-mvp/spec-maturity-post-mvp.md"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Eval mid/high synthetic fixtures and re-run process"
+description = "Synthesize mid (10–29) and high (≥30) fixtures from dogfood/eval/sample.json (never private dumps). Document re-run-after-Skill-change process and optional report self-check list in dogfood/eval/README. Do not change contracts band cutoffs or rubric dimensions."
+verify = "Mid and high fixture files exist under dogfood/eval/; README states how to score each band and when to re-run; contracts.md band numbers unchanged."
+covers = ["CAP-3"]
+after = [2, "5.3"]
+hitl = false
+risk = "low"
+references = ["dogfood/eval/", "skills/_shared/contracts.md", "spec-maturity-post-mvp/spec-maturity-post-mvp.md"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only from deferred review findings in this epic. Close or rewrite matching deferred-work.md rows with evidence. No new product scope."
+verify = "Leftover todos from 6.1–6.3 landed or explicitly dropped; deferred login/auto-page/eval-thicken rows closed or evidence-linked; no new CAP coverage."
+covers = []
+after = [1, 2, 3]
+hitl = false
+risk = "low"
