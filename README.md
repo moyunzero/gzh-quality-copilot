@@ -19,6 +19,7 @@
 | **扩展** | Chrome MV3 · [`extension/`](extension/) · 仅读本号后台列表 |
 | **评测** | Skill vs 裸聊 · [`dogfood/eval/`](dogfood/eval/README.md) |
 | **许可** | [MIT](LICENSE) |
+| **站点** | [GitHub Pages（中文落地页）](https://moyunzero.github.io/gzh-quality-copilot/) · 源码在 [`docs/`](docs/) |
 
 ---
 

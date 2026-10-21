@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://moyunzero.github.io/gzh-quality-copilot/sitemap.xml
