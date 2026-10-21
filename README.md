@@ -1,9 +1,17 @@
-# 公众号质量 Copilot
+# 公众号质量 Copilot · gzh-quality-copilot
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Manifest](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white)](extension/manifest.json)
+[![Skill](https://img.shields.io/badge/Agent_Skill-gzh--review-111827)](skills/gzh-review/SKILL.md)
 
 **本号相对复盘 · 结构教练 · 可粘贴下一篇实验。**  
 不保证推荐，不破解推流，不扒他号。
 
+> **English:** Own-account WeChat Official Account (公众号) quality copilot — paste or export your published posts, get a four-block Agent report (conclusion → factors → title candidates → shippable experiment). Privacy-first Chrome MV3 list export; no growth hacks, no competitor scraping.
+
 用你自己的已发表数据（扩展导出或粘贴），在 Agent 里跑出固定四块报告：结论 → 因子 → 候选 → 实验。篇数少时诚实降级，不当「懂你历史」的算命。
+
+**适合搜这些词的人：** 公众号复盘 · 本号数据 · 阅读量分析（相对） · 标题实验 · 结构教练 · WeChat Official Account review · gongzhonghao · agent skills · Chrome 扩展导出 mp.weixin
 
 | | |
 |---|---|

@@ -1,9 +1,13 @@
 ---
 name: gzh-review
 description: >
-  复盘本号已发表数据：粘贴或打开 interchange JSON/CSV，按篇数降级输出结论、因子、标题候选与下一篇实验。
-  可选：作者粘贴公开对标正文做结构拆解（开头钩子 / 标题结构 / 段落节奏）；值不值得学由作者定。
-  在用户说「复盘」「本号数据」「公众号阅读」「标题候选」「结构实验」「对标」或打开 examples/articles.interchange.json 时使用。
+  Reviews the author's own WeChat Official Account (公众号) published posts from pasted or opened
+  interchange JSON/CSV: count-band degradation, conclusion, factors, title candidates, and a
+  shippable next-post experiment. Optional: structure breakdown of a pasted public peer opening
+  (hook / title / rhythm); worth-copying is the author's call. Use when the user says 复盘、本号数据、
+  公众号、阅读量、标题候选、结构实验、对标、wechat official account, gongzhonghao, own-account review,
+  or opens examples/articles.interchange.json. Do not use for competitor scraping, recommendation
+  algorithm claims, or guaranteeing viral posts.
 ---
 
 # 公众号质量 — 相对复盘
