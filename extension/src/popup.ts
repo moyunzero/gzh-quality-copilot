@@ -1,15 +1,20 @@
 import {
   assertGoldPayload,
+  CANCEL_MULTI_MESSAGE,
   EXTRACT_MESSAGE,
+  EXTRACT_MULTI_MESSAGE,
   FIXTURE_FILENAME,
   normalizeArticles,
   tabExportContext,
   type ExtractReply,
+  type MultiExtractReply,
   type RawRow,
   type TabExportContext,
+  type WalkStopReason,
 } from "./logic";
 
 const exportBtn = document.getElementById("export-btn") as HTMLButtonElement;
+const cancelBtn = document.getElementById("cancel-btn") as HTMLButtonElement;
 const fixtureBtn = document.getElementById("fixture-btn") as HTMLButtonElement;
 const pasteBtn = document.getElementById("paste-btn") as HTMLButtonElement;
 const pasteHelp = document.getElementById("paste-help") as HTMLParagraphElement;
@@ -17,6 +22,7 @@ const statusEl = document.getElementById("status") as HTMLDivElement;
 const progressEl = document.getElementById("progress") as HTMLDivElement;
 const progressBar = document.getElementById("progress-bar") as HTMLElement;
 const progressCheck = document.getElementById("progress-check") as HTMLElement;
+const multipageOpt = document.getElementById("multipage-opt") as HTMLInputElement;
 
 let exportRunning = false;
 
@@ -112,10 +118,17 @@ function hasChromeDownloads(): boolean {
   return typeof chrome !== "undefined" && typeof chrome.downloads?.download === "function";
 }
 
-function setBusy(busy: boolean): void {
+function setBusy(busy: boolean, multi = false): void {
   exportRunning = busy;
   exportBtn.disabled = busy;
   fixtureBtn.disabled = busy;
+  multipageOpt.disabled = busy;
+  if (busy && multi) {
+    reveal(cancelBtn);
+    cancelBtn.disabled = false;
+  } else {
+    hide(cancelBtn);
+  }
   if (busy) {
     exportBtn.setAttribute("aria-busy", "true");
   } else {
@@ -158,9 +171,80 @@ async function requestExtract(tabId: number): Promise<ExtractReply> {
   }
 }
 
+async function requestMultiExtract(tabId: number): Promise<MultiExtractReply> {
+  try {
+    return (await chrome.tabs.sendMessage(tabId, {
+      type: EXTRACT_MULTI_MESSAGE,
+    })) as MultiExtractReply;
+  } catch {
+    if (typeof chrome.scripting?.executeScript !== "function") {
+      throw new Error("inject unavailable");
+    }
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content-list.js"],
+    });
+    return (await chrome.tabs.sendMessage(tabId, {
+      type: EXTRACT_MULTI_MESSAGE,
+    })) as MultiExtractReply;
+  }
+}
+
+async function requestCancel(tabId: number): Promise<void> {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: CANCEL_MULTI_MESSAGE });
+  } catch {
+    /* tab may be gone */
+  }
+}
+
+function stopReasonMessage(reason: WalkStopReason, count: number, pages: number): string {
+  const base = `已下载 ${FIXTURE_FILENAME}（${count} 篇 / ${pages} 页）`;
+  switch (reason) {
+    case "cancel":
+      return count > 0 ? `已取消。${base}` : "已取消。";
+    case "cap":
+      return `${base} · 已达翻页上限`;
+    case "error":
+      return count > 0 ? `翻页中断。${base}` : "列表为空或无法解析。";
+    case "end":
+      return `${base} · 已到末页`;
+    default: {
+      const _exhaustive: never = reason;
+      return _exhaustive;
+    }
+  }
+}
+
+async function finishWithArticles(
+  rawArticles: RawRow[],
+  stopReason: WalkStopReason,
+  pagesWalked: number,
+): Promise<void> {
+  if (rawArticles.length === 0) {
+    resetProgress();
+    if (stopReason === "cancel") {
+      showStatus("已取消。", "note");
+    } else {
+      showStatus("列表为空或无法解析。", "danger");
+    }
+    showPasteCta();
+    return;
+  }
+  const payload = normalizeArticles(rawArticles);
+  setProgress(0.8);
+  await downloadJson(payload, FIXTURE_FILENAME);
+  markProgressComplete();
+  const kind = stopReason === "cancel" || stopReason === "error" ? "note" : "ok";
+  showStatus(stopReasonMessage(stopReason, rawArticles.length, pagesWalked), kind);
+}
+
+let cancelTabId: number | undefined;
+
 async function onExport(): Promise<void> {
   if (exportRunning) return;
-  setBusy(true);
+  const multi = multipageOpt.checked;
+  setBusy(true, multi);
 
   try {
     hidePaste();
@@ -190,11 +274,51 @@ async function onExport(): Promise<void> {
       return;
     }
 
+    cancelTabId = tab.id;
     setProgress(0.2);
 
-    let reply: ExtractReply;
+    if (!multi) {
+      let reply: ExtractReply;
+      try {
+        reply = await requestExtract(tab.id);
+      } catch {
+        resetProgress();
+        showStatus("请刷新已发表列表页后重试。", "danger");
+        showPasteCta();
+        return;
+      }
+
+      setProgress(0.55);
+
+      if (!reply || reply.ok === false) {
+        resetProgress();
+        showStatus("列表为空或无法解析。", "danger");
+        showPasteCta();
+        return;
+      }
+
+      const rawArticles: RawRow[] = reply.articles ?? [];
+      if (rawArticles.length === 0) {
+        resetProgress();
+        showStatus("列表为空或无法解析。", "danger");
+        showPasteCta();
+        return;
+      }
+
+      const payload = normalizeArticles(rawArticles);
+      setProgress(0.8);
+      await downloadJson(payload, FIXTURE_FILENAME);
+      markProgressComplete();
+      showStatus(`已下载 ${FIXTURE_FILENAME}`, "ok");
+      return;
+    }
+
+    showStatus("正在翻页导出…可点取消。", "note");
+    setProgress(0.35);
+
+    let reply: MultiExtractReply;
     try {
-      reply = await requestExtract(tab.id);
+      reply = await requestMultiExtract(tab.id);
     } catch {
       resetProgress();
       showStatus("请刷新已发表列表页后重试。", "danger");
@@ -202,7 +326,7 @@ async function onExport(): Promise<void> {
       return;
     }
 
-    setProgress(0.55);
+    setProgress(0.7);
 
     if (!reply || reply.ok === false) {
       resetProgress();
@@ -211,26 +335,22 @@ async function onExport(): Promise<void> {
       return;
     }
 
-    const rawArticles: RawRow[] = reply.articles ?? [];
-    if (rawArticles.length === 0) {
-      resetProgress();
-      showStatus("列表为空或无法解析。", "danger");
-      showPasteCta();
-      return;
-    }
-
-    const payload = normalizeArticles(rawArticles);
-    setProgress(0.8);
-    await downloadJson(payload, FIXTURE_FILENAME);
-    markProgressComplete();
-    showStatus(`已下载 ${FIXTURE_FILENAME}`, "ok");
+    await finishWithArticles(reply.articles ?? [], reply.stopReason, reply.pagesWalked);
   } catch {
     resetProgress();
     showStatus("本地下载失败。", "danger");
     showPasteCta();
   } finally {
+    cancelTabId = undefined;
     setBusy(false);
   }
+}
+
+async function onCancel(): Promise<void> {
+  if (!exportRunning || cancelTabId === undefined) return;
+  cancelBtn.disabled = true;
+  showStatus("正在取消…", "note");
+  await requestCancel(cancelTabId);
 }
 
 async function onFixtureExport(): Promise<void> {
@@ -269,6 +389,10 @@ async function onFixtureExport(): Promise<void> {
 
 exportBtn.addEventListener("click", () => {
   void onExport();
+});
+
+cancelBtn.addEventListener("click", () => {
+  void onCancel();
 });
 
 fixtureBtn.addEventListener("click", () => {

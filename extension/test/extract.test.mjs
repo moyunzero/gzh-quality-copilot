@@ -111,8 +111,9 @@ describe("double-busy guard", () => {
     assert.match(src, /let exportRunning = false/);
     assert.match(src, /aria-busy/);
     const onExport = src.slice(src.indexOf("async function onExport"), src.indexOf("async function onFixtureExport"));
-    assert.match(onExport, /if \(exportRunning\) return;\s*setBusy\(true\)/);
-    assert.match(onExport, /finally \{\s*setBusy\(false\);\s*\}/);
+    assert.match(onExport, /if \(exportRunning\) return;/);
+    assert.match(onExport, /setBusy\(true(?:,\s*multi)?\)/);
+    assert.match(onExport, /finally \{[\s\S]*setBusy\(false\)/);
   });
 });
 

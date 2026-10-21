@@ -37,3 +37,7 @@
   summary: README body/_missing 旁注已落地（2026-10-21 README 重写）；本条关闭 walkthrough 所 defer 的文档债。
   evidence: Root README「关于 body」小节；金样可含 body、扩展导出 _missing 含 body 已写明。
 
+
+- source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-maturity-extension-eval/story-opt-in-multi-page-export-with-cancel-plan.md`
+  summary: Wire `fixtures/list-page-pager.html` into a DOM-based pager test (or drop the unused fixture) once a lightweight HTML parser is acceptable in CI.
+  evidence: 6.2 quick review — fixture added but tests mock walkListPages/findNext; live WeUI still HITL-only.
