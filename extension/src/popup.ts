@@ -2,10 +2,11 @@ import {
   assertGoldPayload,
   EXTRACT_MESSAGE,
   FIXTURE_FILENAME,
-  isMpListUrl,
   normalizeArticles,
+  tabExportContext,
   type ExtractReply,
   type RawRow,
+  type TabExportContext,
 } from "./logic";
 
 const exportBtn = document.getElementById("export-btn") as HTMLButtonElement;
@@ -45,6 +46,30 @@ function showStatus(text: string, kind: "danger" | "ok" | "note"): void {
   statusEl.classList.remove("is-danger", "is-ok", "is-note");
   statusEl.classList.add(`is-${kind}`);
   reveal(statusEl);
+}
+
+function applyContextStatus(ctx: TabExportContext): void {
+  showStatus(ctx.message, ctx.statusKind);
+  if (ctx.kind !== "ready") {
+    showPasteCta();
+  }
+}
+
+/** Pre-export status from active tab URL; no extract required. */
+async function refreshContextStatus(): Promise<void> {
+  hidePaste();
+  if (!hasChromeTabs()) {
+    applyContextStatus(tabExportContext(undefined));
+    return;
+  }
+  let tab: chrome.tabs.Tab | undefined;
+  try {
+    tab = await activeTab();
+  } catch {
+    applyContextStatus(tabExportContext(undefined));
+    return;
+  }
+  applyContextStatus(tabExportContext(tab?.url));
 }
 
 function hidePaste(): void {
@@ -141,8 +166,7 @@ async function onExport(): Promise<void> {
     hidePaste();
     resetProgress();
     if (!hasChromeTabs()) {
-      showStatus("当前不是已发表列表页。", "danger");
-      showPasteCta();
+      applyContextStatus(tabExportContext(undefined));
       return;
     }
 
@@ -150,14 +174,13 @@ async function onExport(): Promise<void> {
     try {
       tab = await activeTab();
     } catch {
-      showStatus("当前不是已发表列表页。", "danger");
-      showPasteCta();
+      applyContextStatus(tabExportContext(undefined));
       return;
     }
 
-    if (!isMpListUrl(tab?.url)) {
-      showStatus("当前不是已发表列表页。", "danger");
-      showPasteCta();
+    const ctx = tabExportContext(tab?.url);
+    if (ctx.kind !== "ready") {
+      applyContextStatus(ctx);
       return;
     }
 
@@ -255,3 +278,5 @@ fixtureBtn.addEventListener("click", () => {
 pasteBtn.addEventListener("click", () => {
   reveal(pasteHelp);
 });
+
+void refreshContextStatus();

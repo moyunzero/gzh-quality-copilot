@@ -67,6 +67,33 @@
       return false;
     }
   }
+  function tabExportContext(url) {
+    if (isMpListUrl(url)) {
+      return {
+        kind: "ready",
+        statusKind: "ok",
+        message: "\u672C\u53F7\u5DF2\u53D1\u8868\u5217\u8868\uFF0C\u53EF\u5BFC\u51FA\u3002"
+      };
+    }
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.hostname === "mp.weixin.qq.com") {
+          return {
+            kind: "not-ready",
+            statusKind: "danger",
+            message: "\u8BF7\u5148\u767B\u5F55\u672C\u53F7\u5217\u8868\u3002"
+          };
+        }
+      } catch {
+      }
+    }
+    return {
+      kind: "not-list",
+      statusKind: "danger",
+      message: "\u5F53\u524D\u4E0D\u662F\u5DF2\u53D1\u8868\u5217\u8868\u9875\u3002"
+    };
+  }
   function assertGoldPayload(data) {
     if (!data || typeof data !== "object" || !("articles" in data)) {
       throw new Error("missing articles");
@@ -121,6 +148,27 @@
     statusEl.classList.remove("is-danger", "is-ok", "is-note");
     statusEl.classList.add(`is-${kind}`);
     reveal(statusEl);
+  }
+  function applyContextStatus(ctx) {
+    showStatus(ctx.message, ctx.statusKind);
+    if (ctx.kind !== "ready") {
+      showPasteCta();
+    }
+  }
+  async function refreshContextStatus() {
+    hidePaste();
+    if (!hasChromeTabs()) {
+      applyContextStatus(tabExportContext(void 0));
+      return;
+    }
+    let tab;
+    try {
+      tab = await activeTab();
+    } catch {
+      applyContextStatus(tabExportContext(void 0));
+      return;
+    }
+    applyContextStatus(tabExportContext(tab?.url));
   }
   function hidePaste() {
     hide(pasteBtn);
@@ -203,21 +251,19 @@
       hidePaste();
       resetProgress();
       if (!hasChromeTabs()) {
-        showStatus("\u5F53\u524D\u4E0D\u662F\u5DF2\u53D1\u8868\u5217\u8868\u9875\u3002", "danger");
-        showPasteCta();
+        applyContextStatus(tabExportContext(void 0));
         return;
       }
       let tab;
       try {
         tab = await activeTab();
       } catch {
-        showStatus("\u5F53\u524D\u4E0D\u662F\u5DF2\u53D1\u8868\u5217\u8868\u9875\u3002", "danger");
-        showPasteCta();
+        applyContextStatus(tabExportContext(void 0));
         return;
       }
-      if (!isMpListUrl(tab?.url)) {
-        showStatus("\u5F53\u524D\u4E0D\u662F\u5DF2\u53D1\u8868\u5217\u8868\u9875\u3002", "danger");
-        showPasteCta();
+      const ctx = tabExportContext(tab?.url);
+      if (ctx.kind !== "ready") {
+        applyContextStatus(ctx);
         return;
       }
       if (!hasChromeDownloads() || tab?.id === void 0) {
@@ -302,4 +348,5 @@
   pasteBtn.addEventListener("click", () => {
     reveal(pasteHelp);
   });
+  void refreshContextStatus();
 })();
