@@ -251,6 +251,15 @@ body {
   color: var(--accent);
 }
 
+.seek-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--mute);
+}
+.seek-list li {
+  margin: 0.55rem 0;
+}
+
 .ban {
   margin: 0;
   padding: 0;
