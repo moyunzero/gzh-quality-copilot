@@ -28,6 +28,8 @@ export const CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI" as const;
 export const BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT" as const;
 /** Popup → service worker: cancel in-flight multi-page export. */
 export const BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT" as const;
+/** Background ↔ content: one list page extract + next URL (sync). */
+export const EXTRACT_PAGE_META_MESSAGE = "EXTRACT_LIST_PAGE_META" as const;
 
 /** Safety cap so a broken pager cannot loop forever. */
 export const MULTI_PAGE_CAP = 50;
@@ -48,6 +50,79 @@ export type MultiExtractOk = {
 };
 export type MultiExtractErr = { ok: false; error: string; stopReason: "error" };
 export type MultiExtractReply = MultiExtractOk | MultiExtractErr;
+
+export type PageMetaOk = {
+  ok: true;
+  articles: RawRow[];
+  nextUrl: string | null;
+  pageNow: number;
+  totalPages: number;
+};
+export type PageMetaErr = { ok: false; error: string };
+export type PageMetaReply = PageMetaOk | PageMetaErr;
+
+/** Dedupe key for multi-page merge (title + optional url). */
+export function rowDedupeKey(row: RawRow): string {
+  const title = String(row.title ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*原创\s*$/u, "")
+    .trim();
+  if (!title) return "";
+  const url = typeof row.url === "string" ? row.url.trim() : "";
+  return url ? `${title}\0${url}` : title;
+}
+
+/** Append page rows into accumulator; skip duplicate keys. */
+export function mergePageRows(acc: RawRow[], page: RawRow[]): RawRow[] {
+  const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
+  const out = [...acc];
+  for (const row of page) {
+    const key = rowDedupeKey(row);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
+/** Total pages from WeUI pager numerals; 1 when absent. */
+export function totalPagesFromPagerText(texts: string[]): number {
+  let max = 1;
+  for (const raw of texts) {
+    const n = parseInt(raw.trim(), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return max;
+}
+
+/**
+ * Next list URL via begin/count (appmsgpublish full-reload pagination).
+ * Pure: pass pager numeral texts from the DOM separately.
+ */
+export function computeNextListPageUrl(
+  href: string,
+  pagerNumTexts: string[],
+): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  if (url.hostname !== "mp.weixin.qq.com") return null;
+
+  const begin = parseInt(url.searchParams.get("begin") || "0", 10);
+  const count = parseInt(url.searchParams.get("count") || "10", 10) || 10;
+  const totalPages = totalPagesFromPagerText(pagerNumTexts);
+  const currentPage = Math.floor(begin / Math.max(count, 1)) + 1;
+  if (currentPage >= totalPages) return null;
+
+  const nextBegin = begin + count;
+  url.searchParams.set("begin", String(nextBegin));
+  if (!url.searchParams.get("count")) url.searchParams.set("count", String(count));
+  return url.toString();
+}
 
 export type NormalizedArticle = {
   title?: string;

@@ -324,7 +324,7 @@ describe("content script never navigates", () => {
   it("does not assign location or open article detail", () => {
     const src = readFileSync(join(root, "src/content-list.ts"), "utf8");
     assert.equal(src.includes("location.assign"), false);
-    assert.equal(src.includes("location.href"), false);
+    assert.equal(/location\.href\s*=/.test(src), false);
     assert.equal(src.includes("window.open"), false);
   });
 });

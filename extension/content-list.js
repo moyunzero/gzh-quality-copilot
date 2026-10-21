@@ -4,7 +4,51 @@
   var EXTRACT_MESSAGE = "EXTRACT_LIST";
   var EXTRACT_MULTI_MESSAGE = "EXTRACT_LIST_MULTI";
   var CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI";
+  var EXTRACT_PAGE_META_MESSAGE = "EXTRACT_LIST_PAGE_META";
   var MULTI_PAGE_CAP = 50;
+  function rowDedupeKey(row) {
+    const title = String(row.title ?? "").trim().replace(/\s+/g, " ").replace(/\s*原创\s*$/u, "").trim();
+    if (!title) return "";
+    const url = typeof row.url === "string" ? row.url.trim() : "";
+    return url ? `${title}\0${url}` : title;
+  }
+  function mergePageRows(acc, page) {
+    const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
+    const out = [...acc];
+    for (const row of page) {
+      const key = rowDedupeKey(row);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(row);
+    }
+    return out;
+  }
+  function totalPagesFromPagerText(texts) {
+    let max = 1;
+    for (const raw of texts) {
+      const n = parseInt(raw.trim(), 10);
+      if (!Number.isNaN(n) && n > max) max = n;
+    }
+    return max;
+  }
+  function computeNextListPageUrl(href, pagerNumTexts2) {
+    let url;
+    try {
+      url = new URL(href);
+    } catch {
+      return null;
+    }
+    if (url.hostname !== "mp.weixin.qq.com") return null;
+    const begin = parseInt(url.searchParams.get("begin") || "0", 10);
+    const count = parseInt(url.searchParams.get("count") || "10", 10) || 10;
+    const totalPages = totalPagesFromPagerText(pagerNumTexts2);
+    const currentPage = Math.floor(begin / Math.max(count, 1)) + 1;
+    if (currentPage >= totalPages) return null;
+    const nextBegin = begin + count;
+    url.searchParams.set("begin", String(nextBegin));
+    if (!url.searchParams.get("count")) url.searchParams.set("count", String(count));
+    return url.toString();
+  }
 
   // src/content-list.ts
   var MERGE_COUNT_KEYS = ["read_count", "like_count", "share_count", "wow_count"];
@@ -681,23 +725,6 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   }
-  function rowDedupeKey(row) {
-    const title = normalizeTitleForMatch(String(row.title ?? ""));
-    if (!title) return "";
-    const url = typeof row.url === "string" ? row.url.trim() : "";
-    return url ? `${title}\0${url}` : title;
-  }
-  function mergePageRows(acc, page) {
-    const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
-    const out = [...acc];
-    for (const row of page) {
-      const key = rowDedupeKey(row);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      out.push(row);
-    }
-    return out;
-  }
   function controlLooksDisabled(el) {
     if (el.getAttribute("aria-disabled") === "true") return true;
     if (el.disabled) return true;
@@ -801,6 +828,25 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
   function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+  function pagerNumTexts(root) {
+    if (!("querySelectorAll" in root)) return [];
+    return Array.from(root.querySelectorAll(".weui-desktop-pagination__num")).map(
+      (el) => (el.textContent ?? "").trim()
+    );
+  }
+  function handlePageMeta() {
+    try {
+      const articles = extractArticlesFromDocument(document);
+      const nextUrl = computeNextListPageUrl(location.href, pagerNumTexts(document));
+      const nums = pagerNumTexts(document);
+      const currentEl = document.querySelector(".weui-desktop-pagination__num_current");
+      const pageNow = currentEl ? parseInt((currentEl.textContent ?? "").trim(), 10) || 1 : 1;
+      const totalPages = Math.max(pageNow, totalPagesFromPagerText(nums));
+      return { ok: true, articles, nextUrl, pageNow, totalPages };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
   async function handleMultiExtract() {
     multiAbort = false;
     try {
@@ -849,6 +895,10 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
         }
         if (type === EXTRACT_MESSAGE) {
           sendResponse(handleExtract());
+          return;
+        }
+        if (type === EXTRACT_PAGE_META_MESSAGE) {
+          sendResponse(handlePageMeta());
           return;
         }
         if (type === EXTRACT_MULTI_MESSAGE) {
