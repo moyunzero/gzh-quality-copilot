@@ -107,6 +107,45 @@ export function exportIsOffList(url: string | undefined): boolean {
   return !isMpListUrl(url);
 }
 
+/** Pre-export tab context: list-ready vs off-list vs mp non-list (login/home equivalent). */
+export type TabExportContextKind = "ready" | "not-list" | "not-ready";
+
+export type TabExportContext = {
+  kind: TabExportContextKind;
+  statusKind: "ok" | "danger" | "note";
+  message: string;
+};
+
+/** Pure URL → status labels; no extract. Infers list/login from paths export already trusts. */
+export function tabExportContext(url: string | undefined): TabExportContext {
+  if (isMpListUrl(url)) {
+    return {
+      kind: "ready",
+      statusKind: "ok",
+      message: "本号已发表列表，可导出。",
+    };
+  }
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname === "mp.weixin.qq.com") {
+        return {
+          kind: "not-ready",
+          statusKind: "danger",
+          message: "请先登录本号列表。",
+        };
+      }
+    } catch {
+      // invalid URL → not-list
+    }
+  }
+  return {
+    kind: "not-list",
+    statusKind: "danger",
+    message: "当前不是已发表列表页。",
+  };
+}
+
 export function assertGoldPayload(data: unknown): void {
   if (!data || typeof data !== "object" || !("articles" in data)) {
     throw new Error("missing articles");
