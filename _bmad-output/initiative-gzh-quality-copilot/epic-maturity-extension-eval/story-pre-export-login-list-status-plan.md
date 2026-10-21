@@ -3,7 +3,7 @@ title: 'Pre-export login/list status'
 type: 'feature'
 ticket: '1'
 created: '2026-10-21'
-status: 'built'
+status: done
 baseline_revision: '950d75c4ec12ab4bdf14ac094779bb6d6a894e1b'
 route: 'full'
 route_source: 'auto'
