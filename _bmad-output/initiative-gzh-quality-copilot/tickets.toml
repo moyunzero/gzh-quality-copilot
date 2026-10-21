@@ -40,3 +40,13 @@ after = [
   { epic = 3, needs = "MV3 list extract skeleton" },
   { epic = 4, needs = "launch README + gates closed" },
 ]
+
+[[epic]]
+id = 6
+slug = "epic-maturity-extension-eval"
+title = "Maturity: login status, opt-in multi-page export, thickened eval"
+covers = ["CAP-1", "CAP-2", "CAP-3"]
+after = [
+  { epic = 3, needs = "MV3 list extract + privacy lock" },
+  { epic = 5, needs = "eval harness skeleton" },
+]
