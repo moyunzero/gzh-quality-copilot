@@ -4,6 +4,8 @@
 [![Manifest](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white)](extension/manifest.json)
 [![Skill](https://img.shields.io/badge/Agent_Skill-gzh--review-111827)](skills/gzh-review/SKILL.md)
 
+![Social preview](.github/social-preview.png)
+
 **本号相对复盘 · 结构教练 · 可粘贴下一篇实验。**  
 不保证推荐，不破解推流，不扒他号。
 
