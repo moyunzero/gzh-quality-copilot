@@ -1,6 +1,6 @@
 # Skill vs 裸聊 · 记分表
 
-- 样本：`dogfood/eval/sample.json`（8 篇）— 勿换
+- 样本 / 档位：`dogfood/eval/________`（`sample.json` &lt;10 · `sample-mid.json` 10–29 · `sample-high.json` ≥30）— 须与本次 A/B 输入一致
 - 量表：`rubric.md`
 - 打分人 / 日期：________ / ________
 - Skill 报告路径：________
