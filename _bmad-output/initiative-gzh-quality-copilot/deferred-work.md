@@ -1,12 +1,12 @@
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-extension-export/story-own-account-list-extract-plan.md`
-  summary: Popup lacks a pre-export「已登录本号？」status affordance from EXPERIENCE.md Information Architecture.
-  evidence: 3.1 tracer and 3.2 list extract only surface status after click; EXPERIENCE wants login/own-account state before 导出. Not introduced by the list-extract change.
+  summary: Pre-export「已登录本号？」status — **closed by epic-6 CAP-1** (story 6.1).
+  evidence: |
+    Was open from epic-3 list extract. Landed: `tabExportContext` + popup `refreshContextStatus` on open (`f85784b` / story-pre-export-login-list-status-plan done).
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-extension-export/story-own-account-list-extract-plan.md`
-  summary: Decide whether to add auto-pagination so 导出 walks every list page (not only the current one). Parked at backlog end — not in epic 3 remaining tickets.
+  summary: Auto-pagination / walk all list pages — **closed by epic-6 CAP-2** (story 6.2 opt-in + cancel).
   evidence: |
-    HITL 2026-10-20: real export returned only the first page (~10 titles+urls); user asked if full-account auto-page is needed.
-    UX note (park last): Skills degradation bands already work with partial samples (<10 / 10–29 / ≥30); paste remains first-class. Auto-page helps dogfood/full history but adds long wait, fragile paging DOM, and double-click/cancel UX. Prefer after 3.3 privacy lock + launch README; until then current-page + manual flip + paste is enough for UJ-1 first run.
+    Was open from epic-3. Landed: opt-in「翻完所有页」+ SW `begin=` URL walk + cancel (`ee1a244`…`6856bff` / story-opt-in-multi-page-export done). HITL 16-page account downloaded JSON.
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-extension-export/story-refactor-sweep-plan.md`
   summary: Epic-3 refactor sweep (3.4) explicitly dropped landing the two deferred items above; no code change.
@@ -28,26 +28,30 @@
     Walkthrough Slice B Thoughts: gold+eval have body; normalize always strips body. User deferred doc one-liner until after walkthrough (with login UI / auto-page maturity work).
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-author-true-path/walkthrough-author-true-path.md`
-  summary: 加厚 eval 闸门：分档夹具样本（10–29 / ≥30）、可选报告自检清单、改 Skill 后必重跑记分的流程约定（非本轮改 rubric）。
+  summary: 加厚 eval 闸门（分档夹具 / 自检 / 重跑约定）— **closed by epic-6 CAP-3** (story 6.3).
   evidence: |
-    Walkthrough Slice D Thoughts: current harness is demo/discipline gate only; single 8-article sample; fully manual; shape not insight. User: done +「后续修改」.
-
+    Was open from author-true-path Slice D. Landed: `dogfood/eval/sample-mid.json` (15) + `sample-high.json` (30); README 分档/重跑/自检; rubric dim-1 band-conditional (`c623bce` / story-eval-mid-high done).
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-author-true-path/walkthrough-author-true-path.md`
   summary: README body/_missing 旁注已落地（2026-10-21 README 重写）；本条关闭 walkthrough 所 defer 的文档债。
   evidence: Root README「关于 body」小节；金样可含 body、扩展导出 _missing 含 body 已写明。
 
-
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-maturity-extension-eval/story-opt-in-multi-page-export-with-cancel-plan.md`
-  summary: Wire `fixtures/list-page-pager.html` into a DOM-based pager test (or drop the unused fixture) once a lightweight HTML parser is acceptable in CI.
-  evidence: 6.2 quick review — fixture added but tests mock walkListPages/findNext; live WeUI still HITL-only.
+  summary: Unused `fixtures/list-page-pager.html` — **dropped in epic-6 sweep (6.4)**; unit mocks cover pager heuristics; live WeUI remains HITL.
+  evidence: |
+    6.2 quick review parked DOM fixture wiring. 6.4 deleted unused fixture (no test/import references); `pagination.test.mjs` mocks remain.
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-epic-6-maturity/walkthrough-epic-6-maturity.md`
   summary: Add dated Skill vs 裸聊 scored runs for mid (`sample-mid.json`) and high (`sample-high.json`) under a new dogfood/YYYY-MM-DD/ folder.
   evidence: |
-    Walkthrough Broad strokes / Slice C Thoughts: fixtures+README exist; only <10 dated sample is 2026-10-21. User deferred during walkthrough (先记着).
+    Walkthrough Broad strokes / Slice C Thoughts: fixtures+README exist; only <10 dated sample is 2026-10-21. User deferred during walkthrough (先记着). **Explicitly out of 6.4** (no new product scope).
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-epic-6-maturity/walkthrough-epic-6-maturity.md`
   summary: Deduplicate multi-page export near-duplicates (truncated title + tempkey vs full /s/ URL) and strip「已修改…」title suffixes.
   evidence: |
-    HITL JSON after 6.2 begin= walk showed pairs; user chose commit 6.2 first (option B), then walkthrough deferred fix to later ticket/6.4.
+    HITL JSON after 6.2 begin= walk showed pairs; user chose commit 6.2 first (option B), then walkthrough deferred. **Explicitly out of 6.4** (no new product scope).
+
+- source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-maturity-extension-eval/story-refactor-sweep-plan.md`
+  summary: Epic-6 refactor sweep (6.4) — closed CAP-1/2/3 deferred rows with evidence; dropped unused pager fixture; no new CAP coverage.
+  evidence: |
+    Closed/rewrote: epic-3 login-status + auto-pagination; author-true-path eval thicken. Dropped: list-page-pager.html. Left open (product later): mid/high dated runs + export title cleanup. `npm test` green; no TODO/FIXME in extension/src or dogfood/eval.
