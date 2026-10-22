@@ -3,7 +3,7 @@ title: 'Eval mid/high synthetic fixtures and re-run process'
 type: 'feature'
 ticket: '3'
 created: '2026-10-22'
-status: 'built'
+status: done
 baseline_revision: '1803324ba1ca1bfc0ca2ec2f0b0074727a13d602'
 route: 'full'
 route_source: 'auto'
