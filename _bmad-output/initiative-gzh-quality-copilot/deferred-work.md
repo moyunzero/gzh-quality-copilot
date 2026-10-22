@@ -41,3 +41,13 @@
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-maturity-extension-eval/story-opt-in-multi-page-export-with-cancel-plan.md`
   summary: Wire `fixtures/list-page-pager.html` into a DOM-based pager test (or drop the unused fixture) once a lightweight HTML parser is acceptable in CI.
   evidence: 6.2 quick review — fixture added but tests mock walkListPages/findNext; live WeUI still HITL-only.
+
+- source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-epic-6-maturity/walkthrough-epic-6-maturity.md`
+  summary: Add dated Skill vs 裸聊 scored runs for mid (`sample-mid.json`) and high (`sample-high.json`) under a new dogfood/YYYY-MM-DD/ folder.
+  evidence: |
+    Walkthrough Broad strokes / Slice C Thoughts: fixtures+README exist; only <10 dated sample is 2026-10-21. User deferred during walkthrough (先记着).
+
+- source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-epic-6-maturity/walkthrough-epic-6-maturity.md`
+  summary: Deduplicate multi-page export near-duplicates (truncated title + tempkey vs full /s/ URL) and strip「已修改…」title suffixes.
+  evidence: |
+    HITL JSON after 6.2 begin= walk showed pairs; user chose commit 6.2 first (option B), then walkthrough deferred fix to later ticket/6.4.
