@@ -63,25 +63,152 @@ export type PageMetaOk = {
 export type PageMetaErr = { ok: false; error: string };
 export type PageMetaReply = PageMetaOk | PageMetaErr;
 
-/** Dedupe key for multi-page merge (title + optional url). */
-export function rowDedupeKey(row: RawRow): string {
-  const title = String(row.title ?? "")
+/**
+ * Export-path title sanitize: whitespace, trailing 原创, trailing「已修改」/「已修改…」.
+ * Extract/DOM match keeps its own normalizeTitleForMatch — do not overload that.
+ */
+export function sanitizeExportTitle(title: string): string {
+  return String(title ?? "")
     .trim()
     .replace(/\s+/g, " ")
     .replace(/\s*原创\s*$/u, "")
+    .replace(/\s*已修改(?:…|\.{1,3})?\s*$/u, "")
     .trim();
+}
+
+/** True for mp.weixin article share URLs (`/s/…` or `/s?…`). */
+export function isShareArticleUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "mp.weixin.qq.com") return false;
+    return parsed.pathname === "/s" || parsed.pathname.startsWith("/s/");
+  } catch {
+    return false;
+  }
+}
+
+/** Dedupe key for multi-page merge (sanitized title + optional url). */
+export function rowDedupeKey(row: RawRow): string {
+  const title = sanitizeExportTitle(String(row.title ?? ""));
   if (!title) return "";
   const url = typeof row.url === "string" ? row.url.trim() : "";
   return url ? `${title}\0${url}` : title;
 }
 
-/** Append page rows into accumulator; skip duplicate keys. */
+type TitleUrlRow = { title?: string; url?: string };
+
+function rowTitle(row: TitleUrlRow): string {
+  return sanitizeExportTitle(String(row.title ?? ""));
+}
+
+function rowUrl(row: TitleUrlRow): string {
+  return typeof row.url === "string" ? row.url.trim() : "";
+}
+
+/** Titles related after sanitize: equal, or one is a prefix of the other (min shorter len 6). */
+export function titlesAreNearDup(a: string, b: string): boolean {
+  const ta = sanitizeExportTitle(a);
+  const tb = sanitizeExportTitle(b);
+  if (!ta || !tb) return false;
+  if (ta === tb) return true;
+  const shorter = ta.length <= tb.length ? ta : tb;
+  const longer = ta.length <= tb.length ? tb : ta;
+  return shorter.length >= 6 && longer.startsWith(shorter);
+}
+
+/**
+ * Near-dup: related titles plus URL-class signal (share `/s/` vs list/tempkey),
+ * or exact sanitized title when either URL is missing.
+ */
+export function rowsAreNearDup(a: TitleUrlRow, b: TitleUrlRow): boolean {
+  const ta = rowTitle(a);
+  const tb = rowTitle(b);
+  if (!titlesAreNearDup(ta, tb)) return false;
+
+  const ua = rowUrl(a);
+  const ub = rowUrl(b);
+  if (!ua || !ub) return ta === tb;
+  if (ua === ub) return true;
+
+  return isShareArticleUrl(ua) !== isShareArticleUrl(ub);
+}
+
+/** Survivor: `/s/` URL → longer sanitized title → first-seen (`a`). */
+export function preferNearDupRow<T extends TitleUrlRow>(a: T, b: T): T {
+  const ua = rowUrl(a);
+  const ub = rowUrl(b);
+  const aShare = Boolean(ua) && isShareArticleUrl(ua);
+  const bShare = Boolean(ub) && isShareArticleUrl(ub);
+  if (aShare && !bShare) return a;
+  if (bShare && !aShare) return b;
+
+  const ta = rowTitle(a);
+  const tb = rowTitle(b);
+  if (tb.length > ta.length) return b;
+  return a;
+}
+
+/** One left-to-right pass; keeps preferNearDupRow winner at first-seen index. */
+function collapseNearDupRowsOnce<T extends TitleUrlRow>(rows: T[]): T[] {
+  const out: T[] = [];
+  for (const row of rows) {
+    let idx = -1;
+    for (let i = 0; i < out.length; i++) {
+      if (rowsAreNearDup(out[i]!, row)) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) {
+      out.push(row);
+      continue;
+    }
+    out[idx] = preferNearDupRow(out[idx]!, row);
+  }
+  return out;
+}
+
+/**
+ * Collapse near-dups until length stabilizes so a later `/s/` can absorb
+ * multiple preceding tempkey prefix rows (e.g. [temp1, temp2, /s/] → [/s/]).
+ */
+export function collapseNearDupRows<T extends TitleUrlRow>(rows: T[]): T[] {
+  let out = rows;
+  let prevLen = -1;
+  while (out.length !== prevLen) {
+    prevLen = out.length;
+    out = collapseNearDupRowsOnce(out);
+  }
+  return out;
+}
+
+/** Append page rows into accumulator; skip exact keys; collapse near-dups with preference. */
 export function mergePageRows(acc: RawRow[], page: RawRow[]): RawRow[] {
   const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
   const out = [...acc];
   for (const row of page) {
     const key = rowDedupeKey(row);
     if (!key || seen.has(key)) continue;
+
+    let nearIdx = -1;
+    for (let i = 0; i < out.length; i++) {
+      if (rowsAreNearDup(out[i]!, row)) {
+        nearIdx = i;
+        break;
+      }
+    }
+    if (nearIdx >= 0) {
+      const prev = out[nearIdx]!;
+      const winner = preferNearDupRow(prev, row);
+      if (winner !== prev) {
+        const prevKey = rowDedupeKey(prev);
+        if (prevKey) seen.delete(prevKey);
+        out[nearIdx] = winner;
+        seen.add(rowDedupeKey(winner));
+      }
+      continue;
+    }
+
     seen.add(key);
     out.push(row);
   }
@@ -270,6 +397,16 @@ export function normalizeArticle(raw: RawRow): NormalizedArticle {
       continue;
     }
 
+    if (key === "title") {
+      const cleaned = sanitizeExportTitle(String(value));
+      if (!cleaned) {
+        out._missing.push(key);
+      } else {
+        out.title = cleaned;
+      }
+      continue;
+    }
+
     out[key] = String(value);
   }
 
@@ -277,7 +414,7 @@ export function normalizeArticle(raw: RawRow): NormalizedArticle {
 }
 
 export function normalizeArticles(rawRows: RawRow[]): { articles: NormalizedArticle[] } {
-  return { articles: rawRows.map(normalizeArticle) };
+  return { articles: collapseNearDupRows(rawRows.map(normalizeArticle)) };
 }
 
 /** Align with manifest content_scripts: `/cgi-bin/appmsg*` and `/cgi-bin/appmsgpublish*`. */

@@ -7,10 +7,16 @@ import { findNextPageControl, mergePageRows, walkListPages } from "./content-lis
 import {
   EXTRACT_PAGE_META_MESSAGE,
   buildPageMetaOk,
+  collapseNearDupRows,
   computeNextListPageUrl,
   createMultiStartGate,
+  isShareArticleUrl,
+  mergePageRows as mergePageRowsLogic,
+  normalizeArticles,
   popupExportKind,
+  preferNearDupRow,
   runUrlMultiExportLoop,
+  sanitizeExportTitle,
   tabWaitShouldFinish,
   totalPagesFromPagerText,
 } from "./logic.mjs";
@@ -46,6 +52,113 @@ describe("mergePageRows", () => {
       merged.map((r) => r.title),
       ["甲", "乙", "丙"],
     );
+  });
+});
+
+describe("export title sanitize + near-dup collapse", () => {
+  const share = "https://mp.weixin.qq.com/s/fullArticleId";
+  const tempkey =
+    "https://mp.weixin.qq.com/cgi-bin/appmsg?action=list_card&tempkey=abc123&token=t";
+
+  it("sanitizeExportTitle strips 已修改 / 已修改… and keeps stem", () => {
+    assert.equal(sanitizeExportTitle("标题已修改"), "标题");
+    assert.equal(sanitizeExportTitle("标题已修改…"), "标题");
+    assert.equal(sanitizeExportTitle("标题 已修改..."), "标题");
+    assert.equal(sanitizeExportTitle("标题  原创"), "标题");
+    assert.equal(sanitizeExportTitle("  foo   bar  已修改…"), "foo bar");
+  });
+
+  it("isShareArticleUrl accepts /s/ and /s?", () => {
+    assert.equal(isShareArticleUrl("https://mp.weixin.qq.com/s/abc"), true);
+    assert.equal(isShareArticleUrl("https://mp.weixin.qq.com/s?__biz=x&mid=1"), true);
+    assert.equal(isShareArticleUrl(tempkey), false);
+  });
+
+  it("preferNearDupRow: /s/ wins, else longer title, else first-seen", () => {
+    const truncated = { title: "厨房沙漏底座", url: tempkey };
+    const fuller = { title: "厨房沙漏底座里还有一张卡", url: share };
+    assert.equal(preferNearDupRow(truncated, fuller), fuller);
+    assert.equal(preferNearDupRow(fuller, truncated), fuller);
+
+    const shortShare = { title: "同一标题已修改", url: share };
+    const longTemp = { title: "同一标题加长后缀说明", url: tempkey };
+    assert.equal(preferNearDupRow(longTemp, shortShare), shortShare);
+
+    const a = { title: "够长前缀标题甲", url: tempkey };
+    const b = { title: "够长前缀标题甲乙", url: tempkey };
+    assert.equal(preferNearDupRow(a, b), b);
+    assert.equal(preferNearDupRow(b, a), b);
+  });
+
+  it("collapseNearDupRows keeps one preferred row for truncated+tempkey vs fuller+/s/", () => {
+    const rows = [
+      { title: "厨房沙漏底座里还有", url: tempkey, read_count: 1 },
+      { title: "厨房沙漏底座里还有一张卡", url: share, read_count: 9 },
+    ];
+    const collapsed = collapseNearDupRows(rows);
+    assert.equal(collapsed.length, 1);
+    assert.equal(collapsed[0].url, share);
+    assert.equal(collapsed[0].title, "厨房沙漏底座里还有一张卡");
+  });
+
+  it("collapseNearDupRows absorbs two tempkey prefix rows when a later /s/ arrives", () => {
+    const temp2 =
+      "https://mp.weixin.qq.com/cgi-bin/appmsg?action=list_card&tempkey=def456&token=t";
+    const rows = [
+      { title: "厨房沙漏底座里还有", url: tempkey },
+      { title: "厨房沙漏底座里还有一张", url: temp2 },
+      { title: "厨房沙漏底座里还有一张卡", url: share },
+    ];
+    const collapsed = collapseNearDupRows(rows);
+    assert.equal(collapsed.length, 1);
+    assert.equal(collapsed[0].url, share);
+    assert.equal(collapsed[0].title, "厨房沙漏底座里还有一张卡");
+
+    const { articles } = normalizeArticles(rows);
+    assert.equal(articles.length, 1);
+    assert.equal(articles[0].url, share);
+  });
+
+  it("mergePageRows collapses near-dups with /s/ preference", () => {
+    const merged = mergePageRowsLogic(
+      [{ title: "计时器跳的是隔壁", url: tempkey }],
+      [{ title: "计时器跳的是隔壁那张卡", url: share }],
+    );
+    assert.equal(merged.length, 1);
+    assert.equal(merged[0].url, share);
+  });
+
+  it("distinct articles stay both when titles and URLs differ", () => {
+    const a = { title: "第一篇完全不同", url: "https://mp.weixin.qq.com/s/aaa" };
+    const b = { title: "第二篇完全不同", url: "https://mp.weixin.qq.com/s/bbb" };
+    assert.equal(collapseNearDupRows([a, b]).length, 2);
+    assert.equal(mergePageRowsLogic([a], [b]).length, 2);
+  });
+
+  it("normalizeArticles strips 已修改 and collapses near-dups for all export paths", () => {
+    const { articles } = normalizeArticles([
+      {
+        title: "厨房沙漏底座里还有 已修改…",
+        url: tempkey,
+        read_count: 1,
+        like_count: 0,
+        share_count: 0,
+        wow_count: 0,
+      },
+      {
+        title: "厨房沙漏底座里还有一张卡",
+        url: share,
+        read_count: 9,
+        like_count: 1,
+        share_count: 0,
+        wow_count: 0,
+      },
+    ]);
+    assert.equal(articles.length, 1);
+    assert.equal(articles[0].title, "厨房沙漏底座里还有一张卡");
+    assert.equal(articles[0].url, share);
+    assert.equal(articles[0].read_count, 9);
+    assert.ok(articles[0]._missing.includes("body"));
   });
 });
 

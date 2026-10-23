@@ -42,14 +42,14 @@
     6.2 quick review parked DOM fixture wiring. 6.4 deleted unused fixture (no test/import references); `pagination.test.mjs` mocks remain.
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-epic-6-maturity/walkthrough-epic-6-maturity.md`
-  summary: Add dated Skill vs 裸聊 scored runs for mid (`sample-mid.json`) and high (`sample-high.json`) under a new dogfood/YYYY-MM-DD/ folder.
+  summary: Add dated Skill vs 裸聊 scored runs for mid/high — **superseded by 2026-10-23 split entry** (see plan-export-title-cleanup row below).
   evidence: |
-    Walkthrough Broad strokes / Slice C Thoughts: fixtures+README exist; only <10 dated sample is 2026-10-21. User deferred during walkthrough (先记着). **Explicitly out of 6.4** (no new product scope).
+    Was open from walkthrough Slice C (fixtures+README exist; only dated sample was 2026-10-21). Tracking continues solely under the plan-export-title-cleanup mid/high split entry dated 2026-10-23 — do not reopen a second identical debt here.
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/walkthrough-epic-6-maturity/walkthrough-epic-6-maturity.md`
-  summary: Deduplicate multi-page export near-duplicates (truncated title + tempkey vs full /s/ URL) and strip「已修改…」title suffixes.
+  summary: Deduplicate multi-page export near-duplicates (truncated title + tempkey vs full /s/ URL) and strip「已修改…」title suffixes — **closed by plan-export-title-cleanup** (2026-10-23).
   evidence: |
-    HITL JSON after 6.2 begin= walk showed pairs; user chose commit 6.2 first (option B), then walkthrough deferred. **Explicitly out of 6.4** (no new product scope).
+    Was open from epic-6 HITL near-dup/dirty titles. Landed: `sanitizeExportTitle` + `collapseNearDupRows` / near-dup-aware `mergePageRows` in `extension/src/logic.ts`; wired through `normalizeArticles` for single + multi export. Unit matrix in `pagination.test.mjs`; mid/high dated dogfood still deferred below.
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/epic-maturity-extension-eval/story-refactor-sweep-plan.md`
   summary: Epic-6 refactor sweep (6.4) — closed CAP-1/2/3 deferred rows with evidence; dropped unused pager fixture; no new CAP coverage.
@@ -64,3 +64,8 @@
 ## Deferred from: code review of story-opt-in-multi-page-export-with-cancel-plan (2026-10-22 re-review)
 
 - `waitTabNavigateComplete` may resolve on stray `complete` (user navigates other URL mid-export) — maybe-false medium; settle by HITL navigating away mid-export or asserting URL match after complete (`extension/src/background.ts`).
+
+- source_plan: `_bmad-output/initiative-gzh-quality-copilot/plan-export-title-cleanup-and-mid-high-dogfood.md`
+  summary: Add dated Skill vs 裸聊 scored runs for mid (`sample-mid.json`) and high (`sample-high.json`) under `dogfood/2026-10-23/` with `*-mid.*` / `*-high.*` layout.
+  evidence: |
+    Split from Keep-all plan at token gate (2026-10-23): title cleanup ships first; mid/high dated HITL eval remains product later (fixtures+README already exist).

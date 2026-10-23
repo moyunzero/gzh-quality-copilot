@@ -6,11 +6,60 @@
   var CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI";
   var EXTRACT_PAGE_META_MESSAGE = "EXTRACT_LIST_PAGE_META";
   var MULTI_PAGE_CAP = 50;
+  function sanitizeExportTitle(title) {
+    return String(title ?? "").trim().replace(/\s+/g, " ").replace(/\s*原创\s*$/u, "").replace(/\s*已修改(?:…|\.{1,3})?\s*$/u, "").trim();
+  }
+  function isShareArticleUrl(url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname !== "mp.weixin.qq.com") return false;
+      return parsed.pathname === "/s" || parsed.pathname.startsWith("/s/");
+    } catch {
+      return false;
+    }
+  }
   function rowDedupeKey(row) {
-    const title = String(row.title ?? "").trim().replace(/\s+/g, " ").replace(/\s*原创\s*$/u, "").trim();
+    const title = sanitizeExportTitle(String(row.title ?? ""));
     if (!title) return "";
     const url = typeof row.url === "string" ? row.url.trim() : "";
     return url ? `${title}\0${url}` : title;
+  }
+  function rowTitle(row) {
+    return sanitizeExportTitle(String(row.title ?? ""));
+  }
+  function rowUrl(row) {
+    return typeof row.url === "string" ? row.url.trim() : "";
+  }
+  function titlesAreNearDup(a, b) {
+    const ta = sanitizeExportTitle(a);
+    const tb = sanitizeExportTitle(b);
+    if (!ta || !tb) return false;
+    if (ta === tb) return true;
+    const shorter = ta.length <= tb.length ? ta : tb;
+    const longer = ta.length <= tb.length ? tb : ta;
+    return shorter.length >= 6 && longer.startsWith(shorter);
+  }
+  function rowsAreNearDup(a, b) {
+    const ta = rowTitle(a);
+    const tb = rowTitle(b);
+    if (!titlesAreNearDup(ta, tb)) return false;
+    const ua = rowUrl(a);
+    const ub = rowUrl(b);
+    if (!ua || !ub) return ta === tb;
+    if (ua === ub) return true;
+    return isShareArticleUrl(ua) !== isShareArticleUrl(ub);
+  }
+  function preferNearDupRow(a, b) {
+    const ua = rowUrl(a);
+    const ub = rowUrl(b);
+    const aShare = Boolean(ua) && isShareArticleUrl(ua);
+    const bShare = Boolean(ub) && isShareArticleUrl(ub);
+    if (aShare && !bShare) return a;
+    if (bShare && !aShare) return b;
+    const ta = rowTitle(a);
+    const tb = rowTitle(b);
+    if (tb.length > ta.length) return b;
+    return a;
   }
   function mergePageRows(acc, page) {
     const seen = new Set(acc.map(rowDedupeKey).filter(Boolean));
@@ -18,6 +67,24 @@
     for (const row of page) {
       const key = rowDedupeKey(row);
       if (!key || seen.has(key)) continue;
+      let nearIdx = -1;
+      for (let i = 0; i < out.length; i++) {
+        if (rowsAreNearDup(out[i], row)) {
+          nearIdx = i;
+          break;
+        }
+      }
+      if (nearIdx >= 0) {
+        const prev = out[nearIdx];
+        const winner = preferNearDupRow(prev, row);
+        if (winner !== prev) {
+          const prevKey = rowDedupeKey(prev);
+          if (prevKey) seen.delete(prevKey);
+          out[nearIdx] = winner;
+          seen.add(rowDedupeKey(winner));
+        }
+        continue;
+      }
       seen.add(key);
       out.push(row);
     }

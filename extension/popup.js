@@ -17,6 +17,82 @@
   var BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT";
   var BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT";
   var BG_MULTI_STATUS_MESSAGE = "BG_MULTI_EXPORT_STATUS";
+  function sanitizeExportTitle(title) {
+    return String(title ?? "").trim().replace(/\s+/g, " ").replace(/\s*原创\s*$/u, "").replace(/\s*已修改(?:…|\.{1,3})?\s*$/u, "").trim();
+  }
+  function isShareArticleUrl(url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname !== "mp.weixin.qq.com") return false;
+      return parsed.pathname === "/s" || parsed.pathname.startsWith("/s/");
+    } catch {
+      return false;
+    }
+  }
+  function rowTitle(row) {
+    return sanitizeExportTitle(String(row.title ?? ""));
+  }
+  function rowUrl(row) {
+    return typeof row.url === "string" ? row.url.trim() : "";
+  }
+  function titlesAreNearDup(a, b) {
+    const ta = sanitizeExportTitle(a);
+    const tb = sanitizeExportTitle(b);
+    if (!ta || !tb) return false;
+    if (ta === tb) return true;
+    const shorter = ta.length <= tb.length ? ta : tb;
+    const longer = ta.length <= tb.length ? tb : ta;
+    return shorter.length >= 6 && longer.startsWith(shorter);
+  }
+  function rowsAreNearDup(a, b) {
+    const ta = rowTitle(a);
+    const tb = rowTitle(b);
+    if (!titlesAreNearDup(ta, tb)) return false;
+    const ua = rowUrl(a);
+    const ub = rowUrl(b);
+    if (!ua || !ub) return ta === tb;
+    if (ua === ub) return true;
+    return isShareArticleUrl(ua) !== isShareArticleUrl(ub);
+  }
+  function preferNearDupRow(a, b) {
+    const ua = rowUrl(a);
+    const ub = rowUrl(b);
+    const aShare = Boolean(ua) && isShareArticleUrl(ua);
+    const bShare = Boolean(ub) && isShareArticleUrl(ub);
+    if (aShare && !bShare) return a;
+    if (bShare && !aShare) return b;
+    const ta = rowTitle(a);
+    const tb = rowTitle(b);
+    if (tb.length > ta.length) return b;
+    return a;
+  }
+  function collapseNearDupRowsOnce(rows) {
+    const out = [];
+    for (const row of rows) {
+      let idx = -1;
+      for (let i = 0; i < out.length; i++) {
+        if (rowsAreNearDup(out[i], row)) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx < 0) {
+        out.push(row);
+        continue;
+      }
+      out[idx] = preferNearDupRow(out[idx], row);
+    }
+    return out;
+  }
+  function collapseNearDupRows(rows) {
+    let out = rows;
+    let prevLen = -1;
+    while (out.length !== prevLen) {
+      prevLen = out.length;
+      out = collapseNearDupRowsOnce(out);
+    }
+    return out;
+  }
   function popupExportKind(multipageChecked) {
     return multipageChecked ? "background-multi" : "single";
   }
@@ -55,12 +131,21 @@
         }
         continue;
       }
+      if (key === "title") {
+        const cleaned = sanitizeExportTitle(String(value));
+        if (!cleaned) {
+          out._missing.push(key);
+        } else {
+          out.title = cleaned;
+        }
+        continue;
+      }
       out[key] = String(value);
     }
     return out;
   }
   function normalizeArticles(rawRows) {
-    return { articles: rawRows.map(normalizeArticle) };
+    return { articles: collapseNearDupRows(rawRows.map(normalizeArticle)) };
   }
   function isMpListUrl(url) {
     if (!url) return false;
