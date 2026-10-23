@@ -58,12 +58,12 @@
 
 ## Deferred from: code review of story-opt-in-multi-page-export-with-cancel-plan (2026-10-22)
 
-- Pager `totalPagesFromPagerText` may underestimate when WeUI omits last page numeral — maybe-false medium; settle with HITL/screenshot of ellipsis pager where last page is not in DOM (`extension/src/logic.ts`).
-- Large multi-page `data:` download may hit browser URL size limits — maybe-false medium; settle by exporting near MULTI_PAGE_CAP and checking `chrome.downloads.download` reject (`extension/src/background.ts`).
+- Pager `totalPagesFromPagerText` may underestimate when WeUI omits last page numeral — **settled false (HITL 2026-10-23)**. 16-page account: DOM nums `['1','2','3','4','16']` (ellipsis but last page present); full multi-export reached 2021 drafts. Evidence: `dogfood/2026-10-23/hitl-maybe-false.md`.
+- Large multi-page `data:` download may hit browser URL size limits — **settled false (HITL 2026-10-23)**. Same 16-page walk downloaded complete JSON ≈ 41.5KB. Extreme near `MULTI_PAGE_CAP=50` untested on this account. Evidence: same hitl note.
 
 ## Deferred from: code review of story-opt-in-multi-page-export-with-cancel-plan (2026-10-22 re-review)
 
-- `waitTabNavigateComplete` may resolve on stray `complete` (user navigates other URL mid-export) — maybe-false medium; settle by HITL navigating away mid-export or asserting URL match after complete (`extension/src/background.ts`).
+- `waitTabNavigateComplete` may resolve on stray `complete` (user navigates other URL mid-export) — **settled false (HITL 2026-10-23)**. Mid-export same-tab navigate away; maintainer confirmed correct behavior (no dirty extract). Evidence: `dogfood/2026-10-23/hitl-maybe-false.md`.
 
 - source_plan: `_bmad-output/initiative-gzh-quality-copilot/plan-export-title-cleanup-and-mid-high-dogfood.md`
   summary: Add dated Skill vs 裸聊 scored runs for mid/high — **closed 2026-10-23**.
