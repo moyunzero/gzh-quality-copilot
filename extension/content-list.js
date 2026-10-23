@@ -49,6 +49,11 @@
     if (!url.searchParams.get("count")) url.searchParams.set("count", String(count));
     return url.toString();
   }
+  function buildPageMetaOk(href, articles, pagerNumTexts2, pageNow) {
+    const nextUrl = computeNextListPageUrl(href, pagerNumTexts2);
+    const totalPages = Math.max(pageNow, totalPagesFromPagerText(pagerNumTexts2));
+    return { ok: true, articles, nextUrl, pageNow, totalPages };
+  }
 
   // src/content-list.ts
   var MERGE_COUNT_KEYS = ["read_count", "like_count", "share_count", "wow_count"];
@@ -837,12 +842,10 @@ ${close[1].replace(/<[^>]+>/g, "\n")}`);
   function handlePageMeta() {
     try {
       const articles = extractArticlesFromDocument(document);
-      const nextUrl = computeNextListPageUrl(location.href, pagerNumTexts(document));
       const nums = pagerNumTexts(document);
       const currentEl = document.querySelector(".weui-desktop-pagination__num_current");
       const pageNow = currentEl ? parseInt((currentEl.textContent ?? "").trim(), 10) || 1 : 1;
-      const totalPages = Math.max(pageNow, totalPagesFromPagerText(nums));
-      return { ok: true, articles, nextUrl, pageNow, totalPages };
+      return buildPageMetaOk(location.href, articles, nums, pageNow);
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }

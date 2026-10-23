@@ -16,6 +16,10 @@
   var EXTRACT_MESSAGE = "EXTRACT_LIST";
   var BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT";
   var BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT";
+  var BG_MULTI_STATUS_MESSAGE = "BG_MULTI_EXPORT_STATUS";
+  function popupExportKind(multipageChecked) {
+    return multipageChecked ? "background-multi" : "single";
+  }
   function isCountKey(key) {
     return COUNT_KEYS.includes(key);
   }
@@ -264,16 +268,39 @@
       throw new Error(reply?.error ?? "background multi start failed");
     }
   }
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
   async function requestCancel(tabId) {
     try {
-      await chrome.runtime.sendMessage({ type: BG_CANCEL_MULTI_MESSAGE, tabId });
+      const reply = await chrome.runtime.sendMessage({
+        type: BG_CANCEL_MULTI_MESSAGE,
+        tabId
+      });
+      return !!reply?.ok;
     } catch {
+      return false;
+    }
+  }
+  async function waitMultiIdle(timeoutMs = 6e4) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const reply = await chrome.runtime.sendMessage({
+          type: BG_MULTI_STATUS_MESSAGE
+        });
+        if (reply?.ok && !reply.inFlight) return;
+      } catch {
+        return;
+      }
+      await delay(200);
     }
   }
   var cancelTabId;
   async function onExport() {
     if (exportRunning) return;
-    const multi = multipageOpt.checked;
+    const kind = popupExportKind(multipageOpt.checked);
+    const multi = kind === "background-multi";
     setBusy(true, multi);
     let backgroundMultiRunning = false;
     try {
@@ -302,7 +329,7 @@
       }
       cancelTabId = tab.id;
       setProgress(0.2);
-      if (!multi) {
+      if (kind === "single") {
         let reply;
         try {
           reply = await requestExtract(tab.id);
@@ -367,7 +394,18 @@
     if (!exportRunning || cancelTabId === void 0) return;
     cancelBtn.disabled = true;
     showStatus("\u6B63\u5728\u53D6\u6D88\u2026", "note");
-    await requestCancel(cancelTabId);
+    const ok = await requestCancel(cancelTabId);
+    if (!ok) {
+      showStatus("\u53D6\u6D88\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002", "danger");
+      cancelBtn.disabled = false;
+      return;
+    }
+    hide(cancelBtn);
+    showStatus("\u5DF2\u53D6\u6D88\u3002", "note");
+    await waitMultiIdle();
+    cancelTabId = void 0;
+    setBusy(false);
+    showStatus("\u5DF2\u53D6\u6D88\u3002", "note");
   }
   async function onFixtureExport() {
     if (exportRunning) return;
