@@ -79,6 +79,8 @@ context: []
 ## Review Triage Log
 
 - 2026-10-21 quick — 6 findings verified. Patched: stuck-click→error; poll waitAfterClick; skip disabled next (continue); empty cancel→paste CTA; end copy「已到末页」; findNext unit tests. Deferred: live HTML pager fixture not loaded in CI (unit mocks cover heuristics; HITL for WeUI). verdicts high/medium→patched; unused fixture→defer.
+- 2026-10-22 full (group-1 extension) — decision option 3 hybrid; 5 patches applied (cancel unlock, delete dead finish helpers, waitTab complete-only, SW mutex+try navigate via `runUrlMultiExportLoop`, executable SW/PAGE_META/opt-in tests). 2 defer (pager underestimate, data-URL size). `npm test` 53 pass.
+- 2026-10-22 re-review — decision option 3 (cancel copy + block until SW idle); 5 patches applied (`BG_MULTI_STATUS` poll, cancel-before-ack clear, `tabWaitShouldFinish`+get, download try/catch, gate/wait/navigate-reject tests). 1 defer (stray complete URL). `npm test` 56 pass.
 
 ## Design Notes
 
@@ -92,3 +94,51 @@ Orchestrate the walk **in the service worker** via `begin`/`count` list URLs (We
 
 **Manual checks:**
 - Unchecked export on list = one page; checked walks; cancel mid-way shows 已取消; reload extension after build.
+
+## Code Review
+
+### 2026-10-22
+**Code review complete.** 0 `decision-needed`, 5 `patch`, 2 `defer`, 8 rejected. Decision resolved → option **3** (hybrid).
+
+- [x] [Review][Decision] Visible stop reason vs download-only — resolved 2026-10-22: option **3** hybrid (cancel unlock +「已取消」; completion stays silent download; delete dead `finishWithArticles`/`stopReasonMessage`; leave CS `walkListPages` as unit-tested helper, not live path).
+
+- [x] [Review][Patch] Cancel unlock +「已取消」; clear busy/cancelTabId after `requestCancel` [`extension/src/popup.ts:347`]
+- [x] [Review][Patch] Delete dead `finishWithArticles` / `stopReasonMessage`; drop tests that pin them [`extension/src/popup.ts:192`]
+- [x] [Review][Patch] `waitTabNavigateComplete` hangs if `complete` arrives without prior `loading` [`extension/src/background.ts:30`]
+- [x] [Review][Patch] SW loop: `tabs.update` uncaught + no in-flight mutex [`extension/src/background.ts:101`]
+- [x] [Review][Patch] Executable tests for SW driver / cancel flag / `EXTRACT_PAGE_META` / opt-in branch [`extension/test/pagination.test.mjs`]
+
+- [x] [Review][Defer] Pager `totalPagesFromPagerText` may underestimate when WeUI omits last page numeral [`extension/src/logic.ts:90`] — deferred: maybe-false medium; settle with HITL/screenshot of ellipsis pager where last page is not in DOM
+- [x] [Review][Defer] Large multi-page `data:` download may hit browser URL size limits [`extension/src/background.ts:20`] — deferred: maybe-false medium; settle by exporting near MULTI_PAGE_CAP and checking `chrome.downloads.download` reject
+
+**Rejected**
+- Progress bar `markProgressComplete` right after SW start — low cosmetic; popup often closed.
+- Help text omits that SW rewrites list tab URL — low; everyday path closes popup.
+- `tabExportContext`「请先登录本号列表」on non-list mp — false; 6.1 Design Notes map home/etc. to not-ready/login equivalent by design.
+- `meta.articles` non-array throws — low; content always sends array.
+- `begin`/`count` NaN nextUrl — low; WeChat list URLs supply them.
+- `findNextPageControl` falling back to 上一页 — false for live product (CS walk unused).
+- Title-only dedupe drops distinct rows without url — maybe-false would be low.
+- No tab-change status refresh — false; CAP-1 delivered open-time reading.
+
+### 2026-10-22 (re-review)
+**Code review complete.** 0 `decision-needed`, 5 `patch`, 1 `defer`, 7 rejected. Decision resolved → option **3**.
+
+- [x] [Review][Decision] Cancel unlock vs SW still walking — resolved 2026-10-22: option **3** — show「已取消」but block re-export until `multiInFlight` clears (poll/message); also require cancel ack before claiming cancelled.
+
+- [x] [Review][Patch] After cancel:「已取消」+ block export until SW idle; require cancel ack [`extension/src/popup.ts:301`]
+- [x] [Review][Patch] Clear `multiCancelled` before `sendResponse(started)` so cancel between ack and `runMultiExport` is not wiped [`extension/src/background.ts:77`]
+- [x] [Review][Patch] `waitTabNavigateComplete`: after attach, resolve if tab already `complete` [`extension/src/background.ts:30`]
+- [x] [Review][Patch] Wrap `downloadJson` in try/catch inside `runMultiExport` [`extension/src/background.ts:96`]
+- [x] [Review][Patch] Executable tests: navigate/wait reject in `runUrlMultiExportLoop`; start-gate busy helper; waitTab complete-without-loading [`extension/test/pagination.test.mjs`]
+
+- [x] [Review][Defer] `waitTabNavigateComplete` may resolve on stray `complete` (user navigates other URL) [`extension/src/background.ts:43`] — deferred: maybe-false medium; settle by HITL navigating away mid-export or asserting URL match after complete
+
+**Rejected**
+- Cancel still downloads partial rows — false; Design Notes + hybrid option 3 require partial download when rows exist.
+- Lost「已到末页」/ empty-cancel paste CTA — false; hybrid option 3 intentionally removed popup completion reasons.
+- Plan/triage prose vs silent completion — reject; fix would only edit the plan under review.
+- Generic「未能启动」for SW `busy` — low; concurrent start rare.
+- Claims file HEAD epic-6 sweep narrative vs patch diff — false; claims staging includes prior commit message by design.
+- Intent CS-click / visible end reason vs SW hybrid — false for this re-review; prior decision option 3 stands.
+- Source-only `onCancel`/`popupExportKind` sniff alone — absorbed into patch test item where executable; remaining literal checks are low and not worth extra harness complexity beyond the patch list.

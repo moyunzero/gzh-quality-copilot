@@ -4,10 +4,9 @@ import {
   EXTRACT_MULTI_MESSAGE,
   EXTRACT_PAGE_META_MESSAGE,
   MULTI_PAGE_CAP,
-  computeNextListPageUrl,
+  buildPageMetaOk,
   mergePageRows,
   rowDedupeKey,
-  totalPagesFromPagerText,
   type ExtractReply,
   type MultiExtractReply,
   type PageMetaReply,
@@ -1031,12 +1030,10 @@ function pagerNumTexts(root: ParentNode): string[] {
 function handlePageMeta(): PageMetaReply {
   try {
     const articles = extractArticlesFromDocument(document);
-    const nextUrl = computeNextListPageUrl(location.href, pagerNumTexts(document));
     const nums = pagerNumTexts(document);
     const currentEl = document.querySelector(".weui-desktop-pagination__num_current");
     const pageNow = currentEl ? parseInt((currentEl.textContent ?? "").trim(), 10) || 1 : 1;
-    const totalPages = Math.max(pageNow, totalPagesFromPagerText(nums));
-    return { ok: true, articles, nextUrl, pageNow, totalPages };
+    return buildPageMetaOk(location.href, articles, nums, pageNow);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

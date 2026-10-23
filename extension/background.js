@@ -15,6 +15,7 @@
   var FIXTURE_FILENAME = "articles.interchange.json";
   var BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT";
   var BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT";
+  var BG_MULTI_STATUS_MESSAGE = "BG_MULTI_EXPORT_STATUS";
   var EXTRACT_PAGE_META_MESSAGE = "EXTRACT_LIST_PAGE_META";
   var MULTI_PAGE_CAP = 50;
   function rowDedupeKey(row) {
@@ -33,6 +34,48 @@
       out.push(row);
     }
     return out;
+  }
+  function createMultiStartGate() {
+    let inFlight = false;
+    return {
+      inFlight: () => inFlight,
+      accept: () => {
+        if (inFlight) return { ok: false, error: "busy" };
+        inFlight = true;
+        return { ok: true };
+      },
+      release: () => {
+        inFlight = false;
+      }
+    };
+  }
+  function tabWaitShouldFinish(eventStatus, currentStatus) {
+    return eventStatus === "complete" || currentStatus === "complete";
+  }
+  async function runUrlMultiExportLoop(deps) {
+    let articles = [];
+    const maxPages = deps.maxPages ?? MULTI_PAGE_CAP;
+    for (let i = 0; i < maxPages; i++) {
+      if (deps.shouldAbort()) break;
+      let meta;
+      try {
+        meta = await deps.fetchMeta();
+      } catch {
+        break;
+      }
+      if (!meta || meta.ok === false) break;
+      const page = Array.isArray(meta.articles) ? meta.articles : [];
+      articles = mergePageRows(articles, page);
+      if (!meta.nextUrl) break;
+      if (deps.shouldAbort()) break;
+      try {
+        await deps.navigate(meta.nextUrl);
+        await deps.waitAfterNavigate();
+      } catch {
+        break;
+      }
+    }
+    return articles;
   }
   function isCountKey(key) {
     return COUNT_KEYS.includes(key);
@@ -79,6 +122,7 @@
 
   // src/background.ts
   var multiCancelled = false;
+  var multiGate = createMultiStartGate();
   function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -92,21 +136,29 @@
   }
   function waitTabNavigateComplete(tabId, timeoutMs = 25e3) {
     return new Promise((resolve, reject) => {
-      let sawLoading = false;
+      let done = false;
       const timer = setTimeout(() => {
+        if (done) return;
+        done = true;
         chrome.tabs.onUpdated.removeListener(onUpdated);
         reject(new Error("tab load timeout"));
       }, timeoutMs);
+      function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        resolve();
+      }
       function onUpdated(id, info) {
         if (id !== tabId) return;
-        if (info.status === "loading") sawLoading = true;
-        if (info.status === "complete" && sawLoading) {
-          clearTimeout(timer);
-          chrome.tabs.onUpdated.removeListener(onUpdated);
-          resolve();
-        }
+        if (tabWaitShouldFinish(info.status, void 0)) finish();
       }
       chrome.tabs.onUpdated.addListener(onUpdated);
+      void chrome.tabs.get(tabId).then((tab) => {
+        if (tabWaitShouldFinish(void 0, tab.status)) finish();
+      }).catch(() => {
+      });
     });
   }
   async function fetchPageMeta(tabId) {
@@ -128,37 +180,30 @@
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr ?? "page meta failed"));
   }
   async function runMultiExport(tabId) {
-    multiCancelled = false;
     const keepAlive = setInterval(() => {
       void chrome.runtime.getPlatformInfo();
     }, 15e3);
-    let articles = [];
     try {
-      for (let i = 0; i < MULTI_PAGE_CAP; i++) {
-        if (multiCancelled) break;
-        let meta;
-        try {
-          meta = await fetchPageMeta(tabId);
-        } catch {
-          break;
-        }
-        if (!meta || meta.ok === false) break;
-        articles = mergePageRows(articles, meta.articles ?? []);
-        if (!meta.nextUrl) break;
-        if (multiCancelled) break;
-        await chrome.tabs.update(tabId, { url: meta.nextUrl });
-        try {
+      const articles = await runUrlMultiExportLoop({
+        fetchMeta: () => fetchPageMeta(tabId),
+        navigate: async (nextUrl) => {
+          await chrome.tabs.update(tabId, { url: nextUrl });
+        },
+        waitAfterNavigate: async () => {
           await waitTabNavigateComplete(tabId);
-        } catch {
-          break;
-        }
-        await delay(800);
-      }
+          await delay(800);
+        },
+        shouldAbort: () => multiCancelled
+      });
       if (articles.length > 0) {
-        await downloadJson(normalizeArticles(articles), FIXTURE_FILENAME);
+        try {
+          await downloadJson(normalizeArticles(articles), FIXTURE_FILENAME);
+        } catch {
+        }
       }
     } finally {
       clearInterval(keepAlive);
+      multiGate.release();
     }
   }
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -170,6 +215,12 @@
         sendResponse({ ok: false, error: "missing tabId" });
         return;
       }
+      const gate = multiGate.accept();
+      if (!gate.ok) {
+        sendResponse({ ok: false, error: gate.error });
+        return;
+      }
+      multiCancelled = false;
       sendResponse({ ok: true, started: true });
       void runMultiExport(tabId);
       return;
@@ -177,6 +228,10 @@
     if (type === BG_CANCEL_MULTI_MESSAGE) {
       multiCancelled = true;
       sendResponse({ ok: true });
+      return;
+    }
+    if (type === BG_MULTI_STATUS_MESSAGE) {
+      sendResponse({ ok: true, inFlight: multiGate.inFlight() });
     }
   });
 })();

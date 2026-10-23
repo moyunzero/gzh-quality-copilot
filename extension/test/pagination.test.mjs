@@ -4,7 +4,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { findNextPageControl, mergePageRows, walkListPages } from "./content-list.mjs";
-import { computeNextListPageUrl, totalPagesFromPagerText } from "./logic.mjs";
+import {
+  EXTRACT_PAGE_META_MESSAGE,
+  buildPageMetaOk,
+  computeNextListPageUrl,
+  createMultiStartGate,
+  popupExportKind,
+  runUrlMultiExportLoop,
+  tabWaitShouldFinish,
+  totalPagesFromPagerText,
+} from "./logic.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -175,12 +184,25 @@ describe("walkListPages", () => {
   });
 });
 
-describe("popup cancel empty + end copy", () => {
-  it("empty cancel shows paste CTA; end status mentions 末页", () => {
+describe("popupExportKind", () => {
+  it("maps checkbox to single vs background-multi (opt-in cannot invert silently)", () => {
+    assert.equal(popupExportKind(false), "single");
+    assert.equal(popupExportKind(true), "background-multi");
+  });
+});
+
+describe("popup cancel unlock", () => {
+  it("onCancel requires ack, shows 已取消, waits SW idle, then clears busy", () => {
     const src = readFileSync(join(root, "src/popup.ts"), "utf8");
-    const finish = src.slice(src.indexOf("async function finishWithArticles"), src.indexOf("let cancelTabId"));
-    assert.match(finish, /stopReason === "cancel"[\s\S]*showPasteCta\(\)/);
-    assert.match(src, /已到末页/);
+    const onCancel = src.slice(src.indexOf("async function onCancel"), src.indexOf("async function onFixtureExport"));
+    assert.match(onCancel, /requestCancel/);
+    assert.match(onCancel, /waitMultiIdle/);
+    assert.match(onCancel, /BG_MULTI_STATUS_MESSAGE|waitMultiIdle/);
+    assert.match(onCancel, /取消失败/);
+    assert.match(onCancel, /setBusy\(false\)/);
+    assert.match(onCancel, /已取消/);
+    assert.ok(onCancel.indexOf("waitMultiIdle") < onCancel.lastIndexOf("setBusy(false)"));
+    assert.doesNotMatch(src, /finishWithArticles|stopReasonMessage/);
   });
 });
 
@@ -193,24 +215,152 @@ describe("popup multipage UI wiring", () => {
     assert.match(html, /id="cancel-btn"/);
     assert.match(src, /BG_START_MULTI_MESSAGE/);
     assert.match(src, /BG_CANCEL_MULTI_MESSAGE/);
-    assert.match(src, /multipageOpt\.checked/);
+    assert.match(src, /popupExportKind\(multipageOpt\.checked\)/);
     const onExport = src.slice(src.indexOf("async function onExport"), src.indexOf("async function onCancel"));
-    assert.match(onExport, /if \(!multi\)/);
+    assert.match(onExport, /kind === "single"/);
     assert.match(onExport, /requestExtract/);
     assert.match(onExport, /startBackgroundMulti/);
+    const singleBlock = onExport.slice(
+      onExport.indexOf('if (kind === "single")'),
+      onExport.indexOf("showStatus(\"正在翻页导出"),
+    );
+    assert.match(singleBlock, /requestExtract/);
+    assert.doesNotMatch(singleBlock, /startBackgroundMulti/);
+  });
+});
+
+describe("buildPageMetaOk / EXTRACT_PAGE_META", () => {
+  it("returns articles + nextUrl shape used by page-meta message", () => {
+    const href =
+      "https://mp.weixin.qq.com/cgi-bin/appmsgpublish?sub=list&begin=0&count=10&token=t&lang=zh_CN";
+    const meta = buildPageMetaOk(href, [{ title: "甲" }], ["1", "2", "3"], 1);
+    assert.equal(meta.ok, true);
+    assert.equal(meta.articles.length, 1);
+    assert.ok(meta.nextUrl);
+    assert.match(meta.nextUrl, /begin=10/);
+    assert.equal(meta.pageNow, 1);
+    assert.equal(meta.totalPages, 3);
+  });
+
+  it("content message API answers EXTRACT_PAGE_META_MESSAGE", () => {
+    assert.equal(EXTRACT_PAGE_META_MESSAGE, "EXTRACT_LIST_PAGE_META");
+    const src = readFileSync(join(root, "src/content-list.ts"), "utf8");
+    assert.match(src, /type === EXTRACT_PAGE_META_MESSAGE[\s\S]*sendResponse\(handlePageMeta\(\)\)/);
+    assert.match(src, /buildPageMetaOk/);
+  });
+});
+
+describe("runUrlMultiExportLoop", () => {
+  it("navigates and merges multiple pages then stops without nextUrl", async () => {
+    const pages = [
+      { ok: true, articles: [{ title: "P1A" }, { title: "P1B" }], nextUrl: "https://mp.weixin.qq.com/cgi-bin/appmsgpublish?begin=10&count=10", pageNow: 1, totalPages: 2 },
+      { ok: true, articles: [{ title: "P2A" }], nextUrl: null, pageNow: 2, totalPages: 2 },
+    ];
+    let idx = 0;
+    const navigated = [];
+    const articles = await runUrlMultiExportLoop({
+      fetchMeta: async () => pages[idx++],
+      navigate: async (url) => {
+        navigated.push(url);
+      },
+      waitAfterNavigate: async () => {},
+      shouldAbort: () => false,
+    });
+    assert.equal(articles.length, 3);
+    assert.equal(navigated.length, 1);
+    assert.match(navigated[0], /begin=10/);
+  });
+
+  it("cancel flag stops further navigate after first page", async () => {
+    let abort = false;
+    let fetches = 0;
+    const navigated = [];
+    const articles = await runUrlMultiExportLoop({
+      fetchMeta: async () => {
+        fetches += 1;
+        if (fetches === 1) abort = true;
+        return {
+          ok: true,
+          articles: [{ title: `R${fetches}` }],
+          nextUrl: "https://mp.weixin.qq.com/cgi-bin/appmsgpublish?begin=10&count=10",
+          pageNow: fetches,
+          totalPages: 5,
+        };
+      },
+      navigate: async (url) => {
+        navigated.push(url);
+      },
+      waitAfterNavigate: async () => {},
+      shouldAbort: () => abort,
+    });
+    assert.equal(articles.length, 1);
+    assert.equal(navigated.length, 0);
+  });
+
+  it("navigate rejection returns partial merge without throwing", async () => {
+    const articles = await runUrlMultiExportLoop({
+      fetchMeta: async () => ({
+        ok: true,
+        articles: [{ title: "P1" }],
+        nextUrl: "https://mp.weixin.qq.com/cgi-bin/appmsgpublish?begin=10&count=10",
+        pageNow: 1,
+        totalPages: 3,
+      }),
+      navigate: async () => {
+        throw new Error("tabs.update failed");
+      },
+      waitAfterNavigate: async () => {},
+      shouldAbort: () => false,
+    });
+    assert.equal(articles.length, 1);
+    assert.equal(articles[0].title, "P1");
+  });
+});
+
+describe("createMultiStartGate", () => {
+  it("rejects second accept while in flight and allows after release", () => {
+    const gate = createMultiStartGate();
+    assert.deepEqual(gate.accept(), { ok: true });
+    assert.equal(gate.inFlight(), true);
+    assert.deepEqual(gate.accept(), { ok: false, error: "busy" });
+    gate.release();
+    assert.equal(gate.inFlight(), false);
+    assert.deepEqual(gate.accept(), { ok: true });
+  });
+});
+
+describe("tabWaitShouldFinish", () => {
+  it("resolves on complete event or already-complete snapshot without prior loading", () => {
+    assert.equal(tabWaitShouldFinish("complete", undefined), true);
+    assert.equal(tabWaitShouldFinish(undefined, "complete"), true);
+    assert.equal(tabWaitShouldFinish("loading", "loading"), false);
+    assert.equal(tabWaitShouldFinish(undefined, "loading"), false);
   });
 });
 
 describe("background multi export", () => {
-  it("service worker paginates via begin URL and downloads without awaiting popup", () => {
+  it("service worker uses runUrlMultiExportLoop, gate, and downloads without awaiting popup", () => {
     const src = readFileSync(join(root, "src/background.ts"), "utf8");
     const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
     assert.equal(manifest.background?.service_worker, "background.js");
     assert.match(src, /BG_START_MULTI_MESSAGE/);
+    assert.match(src, /BG_MULTI_STATUS_MESSAGE/);
     assert.match(src, /EXTRACT_PAGE_META_MESSAGE/);
+    assert.match(src, /runUrlMultiExportLoop/);
+    assert.match(src, /createMultiStartGate|multiGate/);
+    assert.match(src, /multiCancelled = false/);
     assert.match(src, /tabs\.update/);
     assert.match(src, /chrome\.downloads\.download/);
     assert.match(src, /sendResponse\(\{ ok: true, started: true \}\)/);
     assert.match(src, /getPlatformInfo/);
+    assert.match(src, /tabWaitShouldFinish/);
+    assert.doesNotMatch(src, /sawLoading/);
+    // Cancel clear happens before started ack, not at runMultiExport entry.
+    assert.match(
+      src,
+      /multiCancelled = false;\s*sendResponse\(\{ ok: true, started: true \}\)/,
+    );
+    const runBody = src.slice(src.indexOf("async function runMultiExport"), src.indexOf("chrome.runtime.onMessage"));
+    assert.doesNotMatch(runBody, /multiCancelled = false/);
   });
 });

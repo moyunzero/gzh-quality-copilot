@@ -28,6 +28,8 @@ export const CANCEL_MULTI_MESSAGE = "CANCEL_LIST_MULTI" as const;
 export const BG_START_MULTI_MESSAGE = "BG_START_MULTI_EXPORT" as const;
 /** Popup → service worker: cancel in-flight multi-page export. */
 export const BG_CANCEL_MULTI_MESSAGE = "BG_CANCEL_MULTI_EXPORT" as const;
+/** Popup → service worker: is a multi-page walk still running? */
+export const BG_MULTI_STATUS_MESSAGE = "BG_MULTI_EXPORT_STATUS" as const;
 /** Background ↔ content: one list page extract + next URL (sync). */
 export const EXTRACT_PAGE_META_MESSAGE = "EXTRACT_LIST_PAGE_META" as const;
 
@@ -122,6 +124,96 @@ export function computeNextListPageUrl(
   url.searchParams.set("begin", String(nextBegin));
   if (!url.searchParams.get("count")) url.searchParams.set("count", String(count));
   return url.toString();
+}
+
+/** Sync page-meta reply shape used by EXTRACT_LIST_PAGE_META. */
+export function buildPageMetaOk(
+  href: string,
+  articles: RawRow[],
+  pagerNumTexts: string[],
+  pageNow: number,
+): PageMetaOk {
+  const nextUrl = computeNextListPageUrl(href, pagerNumTexts);
+  const totalPages = Math.max(pageNow, totalPagesFromPagerText(pagerNumTexts));
+  return { ok: true, articles, nextUrl, pageNow, totalPages };
+}
+
+/** Popup opt-in → single extract vs background URL walk. */
+export type PopupExportKind = "single" | "background-multi";
+
+export function popupExportKind(multipageChecked: boolean): PopupExportKind {
+  return multipageChecked ? "background-multi" : "single";
+}
+
+/** Pure gate for overlapping BG_START_MULTI (testable without chrome). */
+export type MultiStartAccept = { ok: true } | { ok: false; error: "busy" };
+
+export function createMultiStartGate(): {
+  inFlight: () => boolean;
+  accept: () => MultiStartAccept;
+  release: () => void;
+} {
+  let inFlight = false;
+  return {
+    inFlight: () => inFlight,
+    accept: () => {
+      if (inFlight) return { ok: false, error: "busy" };
+      inFlight = true;
+      return { ok: true };
+    },
+    release: () => {
+      inFlight = false;
+    },
+  };
+}
+
+/** True when a tab wait should resolve (event or already-complete snapshot). */
+export function tabWaitShouldFinish(
+  eventStatus: string | undefined,
+  currentStatus: string | undefined,
+): boolean {
+  return eventStatus === "complete" || currentStatus === "complete";
+}
+
+/** Injectable SW multi-page loop (URL navigate + per-page meta). */
+export type UrlMultiExportDeps = {
+  fetchMeta: () => Promise<PageMetaReply>;
+  navigate: (nextUrl: string) => Promise<void>;
+  waitAfterNavigate: () => Promise<void>;
+  shouldAbort: () => boolean;
+  maxPages?: number;
+};
+
+export async function runUrlMultiExportLoop(deps: UrlMultiExportDeps): Promise<RawRow[]> {
+  let articles: RawRow[] = [];
+  const maxPages = deps.maxPages ?? MULTI_PAGE_CAP;
+
+  for (let i = 0; i < maxPages; i++) {
+    if (deps.shouldAbort()) break;
+
+    let meta: PageMetaReply;
+    try {
+      meta = await deps.fetchMeta();
+    } catch {
+      break;
+    }
+    if (!meta || meta.ok === false) break;
+
+    const page = Array.isArray(meta.articles) ? meta.articles : [];
+    articles = mergePageRows(articles, page);
+
+    if (!meta.nextUrl) break;
+    if (deps.shouldAbort()) break;
+
+    try {
+      await deps.navigate(meta.nextUrl);
+      await deps.waitAfterNavigate();
+    } catch {
+      break;
+    }
+  }
+
+  return articles;
 }
 
 export type NormalizedArticle = {

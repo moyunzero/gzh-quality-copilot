@@ -55,3 +55,12 @@
   summary: Epic-6 refactor sweep (6.4) — closed CAP-1/2/3 deferred rows with evidence; dropped unused pager fixture; no new CAP coverage.
   evidence: |
     Closed/rewrote: epic-3 login-status + auto-pagination; author-true-path eval thicken. Dropped: list-page-pager.html. Left open (product later): mid/high dated runs + export title cleanup. `npm test` green; no TODO/FIXME in extension/src or dogfood/eval.
+
+## Deferred from: code review of story-opt-in-multi-page-export-with-cancel-plan (2026-10-22)
+
+- Pager `totalPagesFromPagerText` may underestimate when WeUI omits last page numeral — maybe-false medium; settle with HITL/screenshot of ellipsis pager where last page is not in DOM (`extension/src/logic.ts`).
+- Large multi-page `data:` download may hit browser URL size limits — maybe-false medium; settle by exporting near MULTI_PAGE_CAP and checking `chrome.downloads.download` reject (`extension/src/background.ts`).
+
+## Deferred from: code review of story-opt-in-multi-page-export-with-cancel-plan (2026-10-22 re-review)
+
+- `waitTabNavigateComplete` may resolve on stray `complete` (user navigates other URL mid-export) — maybe-false medium; settle by HITL navigating away mid-export or asserting URL match after complete (`extension/src/background.ts`).

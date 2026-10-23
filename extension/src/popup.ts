@@ -1,15 +1,16 @@
 import {
   assertGoldPayload,
   BG_CANCEL_MULTI_MESSAGE,
+  BG_MULTI_STATUS_MESSAGE,
   BG_START_MULTI_MESSAGE,
   EXTRACT_MESSAGE,
   FIXTURE_FILENAME,
   normalizeArticles,
+  popupExportKind,
   tabExportContext,
   type ExtractReply,
   type RawRow,
   type TabExportContext,
-  type WalkStopReason,
 } from "./logic";
 
 const exportBtn = document.getElementById("export-btn") as HTMLButtonElement;
@@ -181,66 +182,44 @@ async function startBackgroundMulti(tabId: number): Promise<void> {
   }
 }
 
-async function requestCancel(tabId: number): Promise<void> {
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestCancel(tabId: number): Promise<boolean> {
   try {
-    await chrome.runtime.sendMessage({ type: BG_CANCEL_MULTI_MESSAGE, tabId });
+    const reply = (await chrome.runtime.sendMessage({
+      type: BG_CANCEL_MULTI_MESSAGE,
+      tabId,
+    })) as { ok?: boolean } | undefined;
+    return !!reply?.ok;
   } catch {
-    /* extension context may be gone */
+    return false;
   }
 }
 
-function stopReasonMessage(reason: WalkStopReason, count: number, pages: number): string {
-  const base = `已下载 ${FIXTURE_FILENAME}（${count} 篇 / ${pages} 页）`;
-  switch (reason) {
-    case "cancel":
-      return count > 0 ? `已取消。${base}` : "已取消。";
-    case "cap":
-      return `${base} · 已达翻页上限`;
-    case "error":
-      return count > 0 ? `翻页中断。${base}` : "列表为空或无法解析。";
-    case "end":
-      if (pages <= 1) {
-        return `${base}。若后台还有分页却只有一页，请刷新列表页后重试（下一页控件可能未识别）。`;
-      }
-      return `${base} · 已到末页`;
-    default: {
-      const _exhaustive: never = reason;
-      return _exhaustive;
+/** Block re-export until SW releases multiInFlight (cancel option 3). */
+async function waitMultiIdle(timeoutMs = 60000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const reply = (await chrome.runtime.sendMessage({
+        type: BG_MULTI_STATUS_MESSAGE,
+      })) as { ok?: boolean; inFlight?: boolean } | undefined;
+      if (reply?.ok && !reply.inFlight) return;
+    } catch {
+      return;
     }
+    await delay(200);
   }
-}
-
-async function finishWithArticles(
-  rawArticles: RawRow[],
-  stopReason: WalkStopReason,
-  pagesWalked: number,
-): Promise<void> {
-  if (rawArticles.length === 0) {
-    resetProgress();
-    if (stopReason === "cancel") {
-      showStatus("已取消。", "note");
-    } else {
-      showStatus("列表为空或无法解析。", "danger");
-    }
-    showPasteCta();
-    return;
-  }
-  const payload = normalizeArticles(rawArticles);
-  setProgress(0.8);
-  await downloadJson(payload, FIXTURE_FILENAME);
-  markProgressComplete();
-  const kind =
-    stopReason === "cancel" || stopReason === "error" || (stopReason === "end" && pagesWalked <= 1)
-      ? "note"
-      : "ok";
-  showStatus(stopReasonMessage(stopReason, rawArticles.length, pagesWalked), kind);
 }
 
 let cancelTabId: number | undefined;
 
 async function onExport(): Promise<void> {
   if (exportRunning) return;
-  const multi = multipageOpt.checked;
+  const kind = popupExportKind(multipageOpt.checked);
+  const multi = kind === "background-multi";
   setBusy(true, multi);
   /** When true, leave cancel affordance up — SW owns the walk/download. */
   let backgroundMultiRunning = false;
@@ -276,7 +255,7 @@ async function onExport(): Promise<void> {
     cancelTabId = tab.id;
     setProgress(0.2);
 
-    if (!multi) {
+    if (kind === "single") {
       let reply: ExtractReply;
       try {
         reply = await requestExtract(tab.id);
@@ -348,7 +327,19 @@ async function onCancel(): Promise<void> {
   if (!exportRunning || cancelTabId === undefined) return;
   cancelBtn.disabled = true;
   showStatus("正在取消…", "note");
-  await requestCancel(cancelTabId);
+  const ok = await requestCancel(cancelTabId);
+  if (!ok) {
+    showStatus("取消失败，请稍后重试。", "danger");
+    cancelBtn.disabled = false;
+    return;
+  }
+  hide(cancelBtn);
+  showStatus("已取消。", "note");
+  // Keep exportRunning until SW idle so single extract cannot race tabs.update.
+  await waitMultiIdle();
+  cancelTabId = undefined;
+  setBusy(false);
+  showStatus("已取消。", "note");
 }
 
 async function onFixtureExport(): Promise<void> {
